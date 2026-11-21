@@ -1,0 +1,79 @@
+{
+  "name": "library-app",
+  "version": "0.1.0",
+  "description": "A personal digital library and launcher",
+  "main": "./out/main/index.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "dist:win": "electron-vite build && electron-builder --win --publish never",
+    "dist:linux": "electron-vite build && electron-builder --linux --publish never"
+  },
+  "dependencies": {
+    "node-unrar-js": "latest",
+    "pdfjs-dist": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "electron": "latest",
+    "electron-vite": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "electron-builder": "latest"
+  },
+  "author": "Aria Sama",
+  "license": "UNLICENSED",
+  "build": {
+    "appId": "com.rancha.app",
+    "productName": "Rancha",
+    "copyright": "Copyright \u00a9 2026 Aria Sama",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon-256.png",
+        "to": "icon.png"
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/node-unrar-js/**"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Rancha-${version}-windows-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Rancha-${version}-windows-portable.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility",
+      "executableName": "rancha",
+      "artifactName": "Rancha-${version}-linux-${arch}.${ext}"
+    }
+  }
+}
