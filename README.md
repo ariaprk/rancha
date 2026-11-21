@@ -1,5 +1,5 @@
-<img width="1254" height="1254" alt="rancha" src="https://github.com/user-attachments/assets/a84660be-dbaa-425c-b62a-bc1379055f8d" />
 # Rancha
+<img width="500" height="500" alt="rancha" src="https://github.com/user-attachments/assets/a84660be-dbaa-425c-b62a-bc1379055f8d" />
 
 An offline personal library and launcher for your games, videos, comics/books and apps. Everything stays on your computer.
 
