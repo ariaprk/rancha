@@ -12,6 +12,7 @@ import { watchGamepad, type PadAction } from '../lib/gamepad'
 import { ACTION_KEYS } from '../lib/gamepadMath'
 import { lastPlayedText } from '../lib/lastPlayed'
 import { playSound } from '../lib/sound'
+import { wheelSteps } from '../lib/wheelMath'
 import Cover from './Cover'
 import MaskIcon, { SECTION_MASKS } from './MaskIcon'
 import { ClockIcon, FolderIcon, HomeIcon, StarIcon } from './icons'
@@ -87,6 +88,17 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
     setFocusMemory((current) => (current[key] === index ? current : { ...current, [key]: index }))
   }, [])
 
+  // Opens an item: a folder is entered, anything else is started.
+  const activate = useCallback((item: LibraryItem) => {
+    const s = latest.current
+    if (item.kind === 'collection') {
+      setPaths((current) => ({ ...current, [s.category.id]: [...s.path, item.id] }))
+      playSound('open')
+    } else {
+      callbacks.current.onOpen(item)
+    }
+  }, [])
+
   const act = useCallback(
     (action: PadAction, fromKeyboard: boolean) => {
       const s = latest.current
@@ -122,14 +134,7 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
             callbacks.current.onExit()
             break
           }
-          const item = s.focused
-          if (!item) break
-          if (item.kind === 'collection') {
-            setPaths((current) => ({ ...current, [s.category.id]: [...s.path, item.id] }))
-            playSound('open')
-          } else {
-            callbacks.current.onOpen(item)
-          }
+          if (s.focused) activate(s.focused)
           break
         }
         case 'back':
@@ -152,7 +157,7 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
           break
       }
     },
-    [setFocus]
+    [setFocus, activate]
   )
 
   // Keyboard
@@ -188,6 +193,56 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [act])
+
+  // Mouse: the wheel moves through the list (Shift + wheel, a sideways wheel, or the wheel over the
+  // category strip changes category), the side buttons of the mouse go back, and a right-click on
+  // an empty place goes back too.
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const node = root.current
+    if (!node) return
+    let carriedY = 0
+    let carriedX = 0
+    let lastStep = 0
+    function onWheel(event: WheelEvent) {
+      if (overlayOpen()) return
+      event.preventDefault()
+      setDevice('key')
+      const sideways = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || (event.target as HTMLElement).closest('.bp-cats') !== null
+      const unit = event.deltaMode === 1 ? 33 : 1 // "lines" -> about pixels
+      if (sideways) {
+        const delta = (Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY) * unit
+        const moved = wheelSteps(carriedX, delta, 90)
+        carriedX = moved.carried
+        if (moved.steps !== 0 && Date.now() - lastStep > 120) {
+          lastStep = Date.now()
+          act(moved.steps > 0 ? 'right' : 'left', false)
+        }
+      } else {
+        const moved = wheelSteps(carriedY, event.deltaY * unit, 50)
+        carriedY = moved.carried
+        for (let i = 0; i < Math.min(3, Math.abs(moved.steps)); i++) act(moved.steps > 0 ? 'down' : 'up', false)
+      }
+    }
+    function onMouseUp(event: MouseEvent) {
+      if (event.button !== 3 || overlayOpen()) return // the "back" side button
+      event.preventDefault()
+      act('back', false)
+    }
+    function onContextMenu(event: MouseEvent) {
+      event.preventDefault()
+      if (overlayOpen() || (event.target as HTMLElement).closest('.bp-row, .bp-cat, button')) return
+      act('back', false)
+    }
+    node.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('mouseup', onMouseUp)
+    node.addEventListener('contextmenu', onContextMenu)
+    return () => {
+      node.removeEventListener('wheel', onWheel)
+      window.removeEventListener('mouseup', onMouseUp)
+      node.removeEventListener('contextmenu', onContextMenu)
+    }
   }, [act])
 
   // Game controller. While the reader, a game page or a dialog is open on top, the controller
@@ -241,12 +296,17 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
           className={`bp-row ${isFocus ? 'focused' : ''}`}
           style={style}
           onClick={() => {
-            if (isFocus) act('confirm', false)
-            else {
-              setFocus(listKey, i)
-              setDevice('key')
-            }
+            // One click opens (the rows move after a click, so a "select first" click would
+            // make the second click land on a different item).
+            setFocus(listKey, i)
+            setDevice('key')
+            activate(item)
           }}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            if (item.kind !== 'collection') callbacks.current.onToggleFavorite(item.id, !item.isFavorite)
+          }}
+          title={item.kind === 'collection' ? 'Click to open' : 'Click to open, right-click for favorite'}
         >
           <span className="bp-thumb">
             <Cover item={item} />
@@ -264,7 +324,7 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
   }
 
   return (
-    <div className="bp" role="application" aria-label="Big Picture">
+    <div className="bp" role="application" aria-label="Big Picture" ref={root}>
       <div className="bp-bg" aria-hidden="true">
         <span className="bp-blob b1" />
         <span className="bp-blob b2" />
@@ -341,8 +401,8 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
       </div>
 
       {focused && (
-        <aside className="bp-preview" key={focused.id} aria-hidden="true">
-          <div className="bp-preview-cover">
+        <aside className="bp-preview" key={focused.id}>
+          <div className={`bp-preview-cover bp-clickable`} onClick={() => activate(focused)} title={focused.kind === 'collection' ? 'Open folder' : 'Open'}>
             <Cover item={focused} />
           </div>
           <div className="bp-preview-title">{focused.name}</div>
@@ -363,6 +423,19 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
         {focused && focused.kind !== 'collection' && <Hint pad="X" key1="F" device={device} label={focused.isFavorite ? 'Unfavorite' : 'Favorite'} color="blue" />}
         <Hint pad="LB RB" key1="← →" device={device} label="Category" color="plain" />
         {device === 'pad' && <Hint pad="Start" key1="" device={device} label="Exit" color="plain" />}
+        {path.length > 0 && (
+          <button type="button" tabIndex={-1} className="bp-exit" onClick={() => act('back', false)}>
+            ‹ Back
+          </button>
+        )}
+        {focused && focused.kind !== 'collection' && device !== 'pad' && (
+          <button type="button" tabIndex={-1} className="bp-exit" onClick={() => callbacks.current.onToggleFavorite(focused.id, !focused.isFavorite)}>
+            {focused.isFavorite ? '★ Unfavorite' : '☆ Favorite'}
+          </button>
+        )}
+        {device !== 'pad' && (
+          <span className="bp-mouse-tip">Mouse: wheel scrolls · Shift+wheel changes category · click opens · right-click on empty space goes back</span>
+        )}
         {device !== 'pad' && (
           <button type="button" tabIndex={-1} className="bp-exit" onClick={() => callbacks.current.onExit()}>
             Exit Big Picture

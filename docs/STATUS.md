@@ -387,3 +387,47 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 - Update: owner name "Aria Sama"; LICENSE changed to proprietary (all rights reserved); repository should be private, downloads via a separate public releases repository (docs/RELEASING.md). Main app icon is AI-made; the UI icons come from Flaticon (free license, needs attribution; author names still to be supplied by the owner). Credits line added in Settings > About.
 - Icon credits added for game (sonnycandra), book (Good Ware), play (UIcons/Flaticon); apps + second game icon still missing links.
 - Apps icon credit added (UIcons/Flaticon). All icon credits supplied; video-game.png assumed to be one of the supplied icons (to confirm).
+
+## 0.1.1 (prepared)
+- Owner confirmed: tested installed Windows app and 9z5-9z11 features (OK), Linux AppImage tested by two people (OK).
+- New libraries start empty (4 top-level sections only; tested with node:sqlite). Existing databases are untouched.
+- Skipped by owner for now: classification of "Add several files", automatic return after a game closes. ScreenScraper waits for the owner's devid.
+- Flaticon icons stay (credits kept; owner accepted the licence risk).
+
+## 9z19 - card label + book icon (for the next release)
+- Cards no longer show "App / Game" / "Video" / "Reading" under the name; a long name now wraps to a second line (max 2, then "..."). Collections still show "N items"; search results still show the location. Card text block has a fixed height (40 px) so the virtualized list keeps equal rows (tested in the test browser: all card heights equal).
+- Book icon redrawn (own design, same line weight as the others, ~13 px at 160 px). Good Ware credit removed because the Flaticon book is no longer used.
+
+## 9z20 - main sections protected
+- Games, Reading, Video and Applications (ids games/reading/video/apps, top level) can no longer be deleted or moved inside another collection (checked in the database layer, so every path is covered: menu, Delete key, bulk, drag, move dialog). They can still be renamed and filled. The context menu hides Delete and "Move to…" for them; the Delete key shows a short message.
+- Older libraries: when a main section is missing, it is created again (empty) every time the library opens, unless a top-level collection with the same name already exists (shared/protectedSections.ts, db/sampleLibrary.ts ensureMainSections). Tested on real node:sqlite and in the test browser.
+
+## 9z21 - manga cover kept when a manga becomes a collection
+- Cause: the first time a manga with several chapter folders is opened, it is converted into a collection. Collections cannot show the automatic first-page cover, so the cover disappeared (and did not come back).
+- Fix: on conversion the cover the book was showing is saved as the collection's own cover (an own cover is never replaced). Applies to manga opened from now on; a manga already converted has no cover and needs one set by hand once.
+- Verified only by a node test with a real database (check-cover-tree); real Electron behaviour is not verified.
+
+## 9z22 - video covers, Big Picture mouse, new icon, hand cursor
+- Videos (16:9 covers were tried and dropped again - covers stay 2:3): a video without its own cover shows ONE frame (centre-cropped to the card), grabbed by the interface from a hidden <video> (served by the private `library-video://item/<id>` address, which only serves videos that are in the library). The moment is random between 10% and 25% of the length (past the intro, early enough not to spoil), chosen once and cached like first-page covers. Unsupported formats simply keep the coloured placeholder.
+- Big Picture mouse: wheel scrolls the list, Shift+wheel / wheel over the category strip changes category, one click opens, right-click on a row toggles favorite, right-click on empty space or the mouse "back" button goes back, Back / Favorite buttons, click the big cover to open. (Round arrow/chevron buttons were tried and removed - they looked bad.)
+- New app icon (build/icon.png, icon-256.png) from the supplied artwork on a rounded white tile.
+- Cursor: white pointing hand with a blue outline replaces the pointer everywhere in the app, and is the cursor on all of Big Picture (src/renderer/src/assets/cursors, hotspot = fingertip).
+- Verified in the test browser / node only: layout 16:9, wheel/click/arrow behaviour, frame-grab logic with a real WebM served with Range support, previewTime/auto-cover tests. NOT verified: real Electron (the library-video protocol, H.264/MKV playback, cursor hotspot).
+
+## 9z23 - fixes after 9z22
+- Removed the arrow / chevron buttons in Big Picture; videos keep 2:3 covers.
+- Video preview did not work. Cause (reproduced in the test browser): a picture drawn from a video served from another address (library-video://) makes the canvas "tainted" and the browser refuses to save it. Fix: the video address now answers with a CORS permission (Access-Control-Allow-Origin + corsEnabled scheme) and the video element asks with crossOrigin="anonymous". Checked in the test browser against a real WebM: without the permission it fails, with it it works. NOT verified in real Electron.
+
+## 9z24 - Settings reorganised, emulator list simplified
+- Settings now has a side menu with one topic per page: Appearance (colors, shape and effects), Size and motion, Comic reader, Emulators, Online covers, Backup, About. The last page you looked at is remembered (old saved tab names are mapped). Narrow windows show the menu as a row.
+- Emulators: one compact line per emulator (name, program path, Choose/Change, remove ✕); name / arguments / main file moved into "Advanced" (also the RetroArch cores note); the add row is one dropdown + "+ Add"; shorter intro text.
+- Same settings and options as before, only moved. Verified only in the test browser (every page opened, no errors).
+
+## 9z25 - online art: more databases, chooser, select-then-confirm, loading
+- "Search online…" first asks which database: TMDB (movies/series, needs a free key), AniList (anime/manga, no key), TVmaze (series, no key), SteamGridDB (games, needs key). The best one for the item (video -> TMDB, manga/comic -> AniList, games -> SteamGridDB) is marked "Recommended"; databases without a key show "Key needed" and explain how to get it. New Settings > Online covers row for the TMDB key; TMDB credit line in About and THIRD_PARTY_NOTICES.
+- A first click on a picture only SELECTS it (bright ring). Click it again, double-click, press Enter, or press "Use this picture" to download it. Spinner while searching, while the picture list loads and while downloading (the dialog dims and shows "Downloading the picture…"), so there is no silent wait.
+- Code: main/onlineArt.ts (Tmdb, AniList, TvMaze, OnlineArt service), shared/online.ts (provider list, string ids). Picture hosts are allow-listed per database (https only).
+- Verified: node test check-online with MADE-UP server answers (parsing, host checks, keys, errors) and the dialog in the test browser. NOT verified: the real servers (this sandbox has no internet) - e.g. exact TMDB/AniList/TVmaze answers may differ from my reading of their docs.
+
+## 9z26 - online thumbnails of the new databases did not show
+- Cause: the page's security policy (img-src in index.html) only allowed thumbnails from steamgriddb.com, so pictures from AniList / TMDB / TVmaze were blocked (broken-image icon), although downloading worked (it goes through the main process). Fix: image.tmdb.org, *.anilist.co and *.tvmaze.com added to img-src. Not verified in real Electron (the sandbox cannot run it).

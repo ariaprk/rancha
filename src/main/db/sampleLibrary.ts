@@ -125,8 +125,10 @@ export const SAMPLE_ITEMS: LibraryItem[] = [
   make('audio-lab', 'apps-media', 'launchable', 'Audio Lab', 340, { tags: ['audio'] })
 ]
 
-// Writes the sample library into a brand-new database (called once, by the
-// first migration). After that the database is the single source of truth.
+// Writes the starting library into a brand-new database (called once, by the
+// first migration). Only the four empty top-level sections are created (Games,
+// Reading, Video, Applications): a new user starts with an empty library, not
+// with invented sample items. After that the database is the single source of truth.
 export function seedSampleLibrary(db: DatabaseSync): void {
   const insertItem = db.prepare(`
     INSERT INTO items
@@ -136,8 +138,7 @@ export function seedSampleLibrary(db: DatabaseSync): void {
   `)
   const insertTag = db.prepare('INSERT INTO item_tags (item_id, tag) VALUES (?, ?)')
 
-  // Parents come before their children in SAMPLE_ITEMS, as the database requires.
-  for (const item of SAMPLE_ITEMS) {
+  for (const item of SAMPLE_ITEMS.filter((sample) => sample.parentId === null)) {
     insertItem.run(
       item.id,
       item.parentId,
@@ -152,5 +153,25 @@ export function seedSampleLibrary(db: DatabaseSync): void {
       item.lastOpenedAt ?? null
     )
     for (const tag of item.tags) insertTag.run(item.id, tag)
+  }
+}
+
+/**
+ * Makes sure the four main sections exist. They cannot be deleted any more, but an
+ * older version allowed it: a library whose section is missing gets it back (empty).
+ * A section is not re-created when a top-level collection with the same name exists.
+ */
+export function ensureMainSections(db: DatabaseSync): void {
+  const topLevel = db.prepare("SELECT id, name FROM items WHERE parent_id IS NULL AND kind = 'collection'").all() as unknown as Array<{ id: string; name: string }>
+  const insert = db.prepare(`
+    INSERT INTO items (id, parent_id, kind, name, hue, sort_order, is_favorite, created_at, updated_at)
+    VALUES (?, NULL, 'collection', ?, ?, ?, 0, ?, ?)
+  `)
+  for (const section of SAMPLE_ITEMS.filter((sample) => sample.parentId === null)) {
+    const present = topLevel.some((row) => row.id === section.id || row.name.trim().toLowerCase() === section.name.toLowerCase())
+    if (present) continue
+    const last = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS last FROM items WHERE parent_id IS NULL').get() as unknown as { last: number }
+    const now = Date.now()
+    insert.run(section.id, section.name, section.hue, last.last + 1, now, now)
   }
 }

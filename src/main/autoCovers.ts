@@ -40,7 +40,7 @@ export class AutoCovers {
   }
 
   private async nameFor(item: LibraryItem): Promise<string | null> {
-    if (item.kind !== 'readable' || !item.target) return null
+    if ((item.kind !== 'readable' && item.kind !== 'video') || !item.target) return null
     try {
       const info = await stat(splitChapterTarget(item.target).path)
       return `${idHash(item.id)}-${Math.floor(info.mtimeMs)}-${info.size}.jpg`
@@ -54,6 +54,7 @@ export class AutoCovers {
     const name = await this.nameFor(item)
     if (name === null || this.failed.has(name)) return { status: 'none' }
     if (existsSync(join(this.dir, name))) return { status: 'ready', name }
+    if (item.kind === 'video') return { status: 'video' }
     if (isPdfPath(item.target as string)) return { status: 'pdf' }
     // One at a time: opening a big RAR can be slow and must not pile up.
     const made = this.queue.then(() => this.generate(item, name))
@@ -77,9 +78,10 @@ export class AutoCovers {
     }
   }
 
-  /** Stores the first page of a PDF, drawn by the interface. Returns the cover name, or null. */
+  /** Stores the first page of a PDF, or a frame of a video, drawn by the interface. Returns the cover name, or null. */
   async savePdfCover(item: LibraryItem, bytes: Buffer): Promise<string | null> {
-    if (item.kind !== 'readable' || !item.target || !isPdfPath(item.target)) return null
+    const isVideo = item.kind === 'video' && !!item.target
+    if (!isVideo && (item.kind !== 'readable' || !item.target || !isPdfPath(item.target))) return null
     const name = await this.nameFor(item)
     if (name === null) return null
     try {

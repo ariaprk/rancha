@@ -8,11 +8,21 @@
 // tested on the user's computer.
 import type { ArtDownload, ArtGame, ArtImage, ArtKind } from '../shared/online'
 
+/** What every online picture database offers. */
+export interface ArtProvider {
+  searchGames(term: string): Promise<ArtGame[]>
+  listImages(id: string, kind: ArtKind): Promise<ArtImage[]>
+  download(url: string): Promise<ArtDownload>
+}
+
 const API = 'https://www.steamgriddb.com/api/v2'
 const MAX_DOWNLOAD_BYTES = 15 * 1024 * 1024
 const TIMEOUT_MS = 20000
 
-export type FetchLike = (url: string, init?: { headers?: Record<string, string>; signal?: AbortSignal }) => Promise<{
+export type FetchLike = (
+  url: string,
+  init?: { method?: string; body?: string; headers?: Record<string, string>; signal?: AbortSignal }
+) => Promise<{
   ok: boolean
   status: number
   headers: { get(name: string): string | null }
@@ -21,6 +31,39 @@ export type FetchLike = (url: string, init?: { headers?: Record<string, string>;
 }>
 
 export class OnlineError extends Error {}
+
+export const MAX_ART_BYTES = MAX_DOWNLOAD_BYTES
+export const ART_TIMEOUT_MS = TIMEOUT_MS
+
+export function asObject(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+}
+
+/** Downloads one picture, only from an allowed https host. Shared by every database. */
+export async function downloadPicture(fetchFn: FetchLike, url: string, allowed: (url: string) => boolean): Promise<ArtDownload> {
+  if (!allowed(url)) throw new OnlineError('That picture address is not allowed.')
+  let response
+  try {
+    response = await fetchFn(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+  } catch {
+    throw new OnlineError('Could not download the picture.')
+  }
+  if (!response.ok) throw new OnlineError(`Could not download the picture (${response.status}).`)
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_DOWNLOAD_BYTES) throw new OnlineError('The picture is empty or too large.')
+  const mime = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
+  return { bytes, mime: mime.startsWith('image/') ? mime : 'image/png' }
+}
+
+/** https picture host check: the host is `domain` or one of its sub-domains. */
+export function hostAllowed(value: string, domains: string[]): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && domains.some((domain) => url.hostname === domain || url.hostname.endsWith('.' + domain))
+  } catch {
+    return false
+  }
+}
 
 /** Only pictures hosted by SteamGridDB may be downloaded (https, steamgriddb.com). */
 export function isAllowedImageUrl(value: string): boolean {
@@ -76,7 +119,7 @@ export class SteamGridDb {
       if (typeof row.id !== 'number' || typeof row.name !== 'string') continue
       const stamp = row.release_date
       games.push({
-        id: row.id,
+        id: String(row.id),
         name: row.name,
         year: typeof stamp === 'number' && stamp > 0 ? new Date(stamp * 1000).getUTCFullYear() : undefined
       })
@@ -84,8 +127,9 @@ export class SteamGridDb {
     return games.slice(0, 20)
   }
 
-  async listImages(gameId: number, kind: ArtKind): Promise<ArtImage[]> {
-    if (!Number.isInteger(gameId) || gameId <= 0) throw new OnlineError('Invalid game.')
+  async listImages(id: string, kind: ArtKind): Promise<ArtImage[]> {
+    const gameId = Number(id)
+    if (!/^\d+$/.test(id) || !Number.isInteger(gameId) || gameId <= 0) throw new OnlineError('Invalid game.')
     // Covers: tall grids. Wallpapers: SteamGridDB "heroes" (wide pictures).
     const path =
       kind === 'cover'
@@ -100,7 +144,7 @@ export class SteamGridDb {
       const thumb = typeof row.thumb === 'string' ? row.thumb : row.url
       if (!isAllowedImageUrl(row.url) || !isAllowedImageUrl(thumb)) continue
       images.push({
-        id: row.id,
+        id: String(row.id),
         url: row.url,
         thumb,
         width: typeof row.width === 'number' ? row.width : 0,
@@ -112,17 +156,6 @@ export class SteamGridDb {
   }
 
   async download(url: string): Promise<ArtDownload> {
-    if (!isAllowedImageUrl(url)) throw new OnlineError('That picture address is not allowed.')
-    let response
-    try {
-      response = await this.fetchFn(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
-    } catch {
-      throw new OnlineError('Could not download the picture.')
-    }
-    if (!response.ok) throw new OnlineError(`Could not download the picture (${response.status}).`)
-    const bytes = new Uint8Array(await response.arrayBuffer())
-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_DOWNLOAD_BYTES) throw new OnlineError('The picture is empty or too large.')
-    const mime = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
-    return { bytes, mime: mime.startsWith('image/') ? mime : 'image/png' }
+    return downloadPicture(this.fetchFn, url, isAllowedImageUrl)
   }
 }

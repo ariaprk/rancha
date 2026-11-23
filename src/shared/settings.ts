@@ -3,7 +3,7 @@
 // valid set of settings. Shared by the backend (which saves them in
 // settings.json) and the interface (which shows and changes them).
 import { sanitizeEmulators, type EmulatorProfile } from './emulators'
-import { STEAMGRIDDB_KEY_PATTERN } from './online'
+import { STEAMGRIDDB_KEY_PATTERN, TMDB_KEY_PATTERN } from './online'
 import type { MotionLevel, ReadingDirection, SortMode, ThemeMode, ViewMode } from './types'
 
 export type CornerStyle = 'sharp' | 'soft' | 'round'
@@ -32,6 +32,7 @@ export interface Settings {
   emulators: EmulatorProfile[] // programs that run ROMs (RetroArch and standalone emulators)
   iconTone: IconTone // color of the sidebar and Big Picture icons
   steamGridDbKey: string // the user's own SteamGridDB API key (empty = online search off)
+  tmdbKey: string // the user's own TMDB API key (movies and series)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -53,7 +54,8 @@ export const DEFAULT_SETTINGS: Settings = {
   readerDirection: 'ltr',
   iconTone: 'accent',
   emulators: [],
-  steamGridDbKey: ''
+  steamGridDbKey: '',
+  tmdbKey: ''
 }
 
 export const CARD_SIZE_RANGE = { min: 110, max: 260 } as const
@@ -110,6 +112,8 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
     steamGridDbKey:
       typeof input.steamGridDbKey === 'string' && STEAMGRIDDB_KEY_PATTERN.test(input.steamGridDbKey.trim())
         ? input.steamGridDbKey.trim()
-        : base.steamGridDbKey
+        : base.steamGridDbKey,
+    tmdbKey:
+      typeof input.tmdbKey === 'string' && TMDB_KEY_PATTERN.test(input.tmdbKey.trim()) ? input.tmdbKey.trim() : base.tmdbKey
   }
 }

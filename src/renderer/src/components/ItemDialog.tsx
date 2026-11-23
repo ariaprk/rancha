@@ -58,6 +58,7 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
   const original = mode.type === 'edit' ? mode.item : null
   const kind: ItemKind = mode.type === 'edit' ? mode.item.kind : mode.kind
   const isCollection = kind === 'collection'
+  const coverShape: CropShape = 'cover'
   const romMode = mode.type === 'create' && mode.rom === true // adding a console game
   const canEmulate = hasWallpaper || romMode // games can run with an emulator
 
@@ -69,7 +70,7 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
   const [coverFile, setCoverFile] = useState<string | null>(original?.coverFile ?? null)
   const [wallpaperFile, setWallpaperFile] = useState<string | null>(original?.wallpaperFile ?? null)
   const [cropping, setCropping] = useState<{ preview: CoverPreview; shape: CropShape } | null>(null) // picture being cropped
-  const [online, setOnline] = useState<{ kind: ArtKind; hasKey: boolean } | null>(null) // online artwork search
+  const [online, setOnline] = useState<{ kind: ArtKind; keys: { steamGridDbKey: boolean; tmdbKey: boolean } } | null>(null) // online artwork search
   // Emulators (games only): which profile runs this ROM, and the RetroArch core.
   const [emulator, setEmulator] = useState<string>(original?.emulator ?? '')
   const [core, setCore] = useState<string>(original?.core ?? '')
@@ -99,7 +100,7 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
 
   const [wallpaperDropOver, setWallpaperDropOver] = useState(false)
 
-  async function useCoverPicture(file: Blob, shape: CropShape = 'cover') {
+  async function useCoverPicture(file: Blob, shape: CropShape = coverShape) {
     setError(null)
     try {
       setCropping({ preview: await previewFromImage(file), shape })
@@ -160,7 +161,7 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
     setError(null)
     try {
       const preview = await window.api.dialogs.pickCoverImage()
-      if (preview) setCropping({ preview, shape: 'cover' }) // the crop step decides what is saved
+      if (preview) setCropping({ preview, shape: coverShape }) // the crop step decides what is saved
     } catch (caught) {
       setError(readableError(caught))
     }
@@ -170,7 +171,7 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
     setError(null)
     try {
       const { settings } = await window.api.settings.get()
-      setOnline({ kind, hasKey: settings.steamGridDbKey.trim() !== '' })
+      setOnline({ kind, keys: { steamGridDbKey: settings.steamGridDbKey.trim() !== '', tmdbKey: settings.tmdbKey.trim() !== '' } })
     } catch (caught) {
       setError(readableError(caught))
     }
@@ -526,7 +527,7 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
         onClose={() => setPickingPage(false)}
         onPick={(preview) => {
           setPickingPage(false)
-          setCropping({ preview, shape: 'cover' })
+          setCropping({ preview, shape: coverShape })
         }}
       />
     )}
@@ -548,10 +549,11 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
       <OnlineArtDialog
         kind={online.kind}
         initialTerm={name.trim()}
-        hasKey={online.hasKey}
+        keys={online.keys}
+        itemKind={kind}
         onClose={() => setOnline(null)}
         onPick={(preview) => {
-          const shape: CropShape = online.kind === 'wallpaper' ? 'wallpaper' : 'cover'
+          const shape: CropShape = online.kind === 'wallpaper' ? 'wallpaper' : coverShape
           setOnline(null)
           setCropping({ preview, shape })
         }}

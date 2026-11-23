@@ -102,12 +102,11 @@ export default function ItemCard({
   }
   useEffect(() => () => cancelAnimationFrame(frame.current), [])
 
-  const subtitle =
-    location !== undefined
-      ? location
-      : item.kind === 'collection'
-        ? `${childCount} ${childCount === 1 ? 'item' : 'items'}`
-        : KIND_LABEL[item.kind]
+  // Under the name: where the item is (search results), or how many items a collection holds.
+  // Plain games / videos / books show no label: their section already says what they are,
+  // and a long name can use the second line instead.
+  const subtitle: string | null =
+    location !== undefined ? location : item.kind === 'collection' ? `${childCount} ${childCount === 1 ? 'item' : 'items'}` : null
   const tooltip = [item.name, location !== undefined ? `${KIND_LABEL[item.kind]} · ${location}` : '', item.description ?? '']
     .filter(Boolean)
     .join('\n')
@@ -162,9 +161,9 @@ export default function ItemCard({
           </span>
         )}
       </div>
-      <div className="card-text">
+      <div className={subtitle === null ? 'card-text card-text-wrap' : 'card-text'}>
         <span className="card-title">{item.name}</span>
-        {!compact && <span className="card-sub">{subtitle}</span>}
+        {!compact && subtitle !== null && <span className="card-sub">{subtitle}</span>}
       </div>
     </button>
   )

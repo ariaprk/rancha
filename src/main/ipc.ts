@@ -44,7 +44,7 @@ import { spawn } from 'node:child_process'
 import { buildLaunch, resolveEntry, coresFolders, installedCores, isBareCommand, LaunchError, suggestCores } from './emulatorLaunch'
 import { planLaunch } from './platformLaunch'
 import { isAmbiguousRom, type EmulatorProfile } from '../shared/emulators'
-import type { SteamGridDb } from './steamGridDb'
+import type { OnlineArt } from './onlineArt'
 import type { ArtDownload, ArtGame, ArtImage, ArtKind } from '../shared/online'
 import type { ReaderService } from './reader/readerService'
 import type { ReaderSessions } from './reader/readerSessions'
@@ -75,7 +75,7 @@ interface Dependencies {
   /** The same for a book page already in memory. */
   pagePreview: (bytes: Buffer) => CoverPreview
   settings: SettingsStore
-  steamGridDb: SteamGridDb
+  onlineArt: OnlineArt
   readerService: ReaderService
   readerSessions: ReaderSessions
 }
@@ -180,7 +180,7 @@ export function registerIpc({
   coverPreview,
   pagePreview,
   settings,
-  steamGridDb,
+  onlineArt,
   readerService,
   readerSessions
 }: Dependencies): void {
@@ -341,6 +341,17 @@ export function registerIpc({
     if (item && result.status === 'reader' && chapters && chapters.length >= 2 && item.target) {
       const session = result.session
       await readerSessions.close(session.sessionId).catch(() => undefined)
+      // Collections cannot show a first-page cover, so keep the one the book was showing as a real cover.
+      let keepCover: string | undefined
+      if (!item.coverFile) {
+        try {
+          const auto = await autoCovers.lookup(item)
+          const path = auto.status === 'ready' ? autoCovers.pathOf(auto.name) : null
+          if (path) keepCover = covers.addFromImage(path)
+        } catch {
+          keepCover = undefined // no cover is better than failing to open the book
+        }
+      }
       repository.convertToChapters(
         item.id,
         chapters.map((chapter) => ({
@@ -349,7 +360,8 @@ export function registerIpc({
           start: chapter.start,
           count: chapter.count
         })),
-        { page: session.startPage, direction: session.direction }
+        { page: session.startPage, direction: session.direction },
+        keepCover
       )
       return { status: 'chapters', id: item.id }
     }
@@ -579,19 +591,19 @@ export function registerIpc({
     return result
   })
 
-  // ---- Online artwork search (SteamGridDB) ----
+  // ---- Online artwork search (SteamGridDB, TMDB, AniList, TVmaze) ----
   // Only runs when the user starts a search. Errors are passed on as readable text.
-  ipcMain.handle(IPC.onlineSearch, async (_event, term: unknown): Promise<ArtGame[]> => {
-    if (typeof term !== 'string') throw new Error('Invalid request.')
-    return steamGridDb.searchGames(term)
+  ipcMain.handle(IPC.onlineSearch, async (_event, provider: unknown, term: unknown): Promise<ArtGame[]> => {
+    if (typeof provider !== 'string' || typeof term !== 'string') throw new Error('Invalid request.')
+    return onlineArt.searchGames(provider, term)
   })
-  ipcMain.handle(IPC.onlineImages, async (_event, gameId: unknown, kind: unknown): Promise<ArtImage[]> => {
-    if (typeof gameId !== 'number' || (kind !== 'cover' && kind !== 'wallpaper')) throw new Error('Invalid request.')
-    return steamGridDb.listImages(gameId, kind as ArtKind)
+  ipcMain.handle(IPC.onlineImages, async (_event, provider: unknown, id: unknown, kind: unknown): Promise<ArtImage[]> => {
+    if (typeof provider !== 'string' || typeof id !== 'string' || (kind !== 'cover' && kind !== 'wallpaper')) throw new Error('Invalid request.')
+    return onlineArt.listImages(provider, id, kind as ArtKind)
   })
-  ipcMain.handle(IPC.onlineDownload, async (_event, url: unknown): Promise<ArtDownload> => {
-    if (typeof url !== 'string') throw new Error('Invalid request.')
-    return steamGridDb.download(url)
+  ipcMain.handle(IPC.onlineDownload, async (_event, provider: unknown, url: unknown): Promise<ArtDownload> => {
+    if (typeof provider !== 'string' || typeof url !== 'string') throw new Error('Invalid request.')
+    return onlineArt.download(provider, url)
   })
 
   // The automatic cover of a readable item (the first page), unless it has its own cover.

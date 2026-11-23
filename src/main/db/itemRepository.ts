@@ -4,6 +4,7 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { pathKey } from '../pathKey'
+import { isProtectedSection } from '../../shared/protectedSections'
 import type {
   ItemKind,
   ItemPatch,
@@ -300,13 +301,16 @@ export class ItemRepository {
   convertToChapters(
     id: string,
     chapters: readonly { name: string; target: string; start: number; count: number }[],
-    resume: { page: number; direction: ReadingDirection }
+    resume: { page: number; direction: ReadingDirection },
+    keepCover?: string
   ): void {
     this.transaction(() => {
       const item = this.getItem(id)
       if (!item || item.kind !== 'readable') throw new Error('This item can no longer be turned into chapters.')
       const wasDone = item.isDone
       this.db.prepare("UPDATE items SET kind = 'collection', target = NULL, updated_at = ? WHERE id = ?").run(Date.now(), id)
+      // A collection has no automatic first-page cover, so the picture it was showing becomes its own cover.
+      if (keepCover && !item.coverFile) this.db.prepare('UPDATE items SET cover_path = ? WHERE id = ?').run(keepCover, id)
       this.db.prepare('DELETE FROM reading_progress WHERE item_id = ?').run(id)
       for (const chapter of chapters) {
         const childId = this.insertItem({ parentId: id, kind: 'readable', name: chapter.name, target: chapter.target })
@@ -341,6 +345,12 @@ export class ItemRepository {
   }
 
   private deleteUnchecked(id: string): string[] {
+    const head = this.db.prepare('SELECT name, parent_id FROM items WHERE id = ?').get(id) as unknown as
+      | { name: string; parent_id: string | null }
+      | undefined
+    if (head && isProtectedSection({ id, parentId: head.parent_id })) {
+      throw new Error(`“${head.name}” is one of the four main sections and cannot be deleted. You can delete the items inside it instead.`)
+    }
     const rows = this.db
       .prepare(`${SUBTREE} SELECT i.cover_path, i.wallpaper_file FROM items i JOIN subtree s ON i.id = s.id`)
       .all(id) as unknown as Array<{ cover_path: string | null; wallpaper_file: string | null }>
@@ -366,6 +376,9 @@ export class ItemRepository {
       | { parent_id: string | null }
       | undefined
     if (!row) throw new Error('This item no longer exists.')
+    if (newParentId !== null && isProtectedSection({ id, parentId: row.parent_id })) {
+      throw new Error('The main sections (Games, Reading, Video, Applications) stay at the top level and cannot be moved into another collection.')
+    }
     if (newParentId === id) throw new Error('A collection cannot be moved into itself.')
     this.assertValidParent(newParentId)
     if (newParentId !== null && this.isInside(id, newParentId)) {

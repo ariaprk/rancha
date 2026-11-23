@@ -8,6 +8,8 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { COVER_SCHEME } from '../shared/cover'
 import { READER_SCHEME } from '../shared/reader'
+import { VIDEO_SCHEME } from '../shared/video'
+import { splitChapterTarget } from '../shared/chapterTarget'
 import { IPC } from '../shared/ipc'
 import type { CoverPreview } from '../shared/types'
 import { APP_ID, APP_NAME } from './appInfo'
@@ -18,6 +20,7 @@ import { openDatabase } from './db/database'
 import { ItemRepository } from './db/itemRepository'
 import { registerIpc } from './ipc'
 import { SteamGridDb } from './steamGridDb'
+import { AniList, OnlineArt, Tmdb, TvMaze } from './onlineArt'
 import { SettingsStore } from './settingsStore'
 import { sanitizeWindowState, WindowStateStore } from './windowState'
 import { ReaderService } from './reader/readerService'
@@ -32,7 +35,8 @@ app.setPath('userData', join(app.getPath('appData'), APP_ID))
 // This has to happen before the app is ready.
 protocol.registerSchemesAsPrivileged([
   { scheme: COVER_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
-  { scheme: READER_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
+  { scheme: READER_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
 ])
 
 let repository: ItemRepository | null = null
@@ -43,7 +47,7 @@ let databaseError: string | null = null
 // plenty sharp for the biggest cards, and small enough to load quickly.
 function encodeImage(image: NativeImage): Buffer {
   const { width, height } = image.getSize()
-  const scale = Math.min(1, 600 / width, 900 / height)
+  const scale = Math.min(1, (width > height ? 960 : 600) / width, 900 / height) // wide pictures (videos) may be wider
   const resized =
     scale < 1
       ? image.resize({
@@ -239,6 +243,26 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(file).toString())
   })
 
+  // Serve a library video to the interface (only to grab a preview frame):
+  // library-video://item/<item id>. The id is looked up in the library, so no other file can be reached.
+  protocol.handle(VIDEO_SCHEME, async (request) => {
+    try {
+      const id = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ''))
+      const item = repository?.getItem(id)
+      if (!item || item.kind !== 'video' || !item.target) return new Response('Not found', { status: 404 })
+      const headers: Record<string, string> = {}
+      const range = request.headers.get('range')
+      if (range) headers.range = range // lets the player jump to a moment without reading the whole file
+      const file = await net.fetch(pathToFileURL(splitChapterTarget(item.target).path).toString(), { headers })
+      // The picture drawn from the video must not be blocked as "foreign", so the answer says it may be used.
+      const answer = new Headers(file.headers)
+      answer.set('Access-Control-Allow-Origin', '*')
+      return new Response(file.body, { status: file.status, statusText: file.statusText, headers: answer })
+    } catch {
+      return new Response('Could not read this video', { status: 500 })
+    }
+  })
+
   const readerSessions = new ReaderSessions()
   readerSessionsRef = readerSessions
   const readerService = new ReaderService({
@@ -283,7 +307,12 @@ app.whenReady().then(() => {
   }
 
   registerIpc({
-    steamGridDb: new SteamGridDb(() => settings.get().steamGridDbKey, (url, init) => fetch(url, init)),
+    onlineArt: new OnlineArt({
+      steamgriddb: new SteamGridDb(() => settings.get().steamGridDbKey, (url, init) => fetch(url, init)),
+      tmdb: new Tmdb(() => settings.get().tmdbKey, (url, init) => fetch(url, init)),
+      anilist: new AniList((url, init) => fetch(url, init)),
+      tvmaze: new TvMaze((url, init) => fetch(url, init))
+    }),
     covers,
     autoCovers,
     coverPreview: makeCoverPreview,

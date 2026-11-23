@@ -1,7 +1,7 @@
 // Tells TypeScript what `window.api` looks like in the user interface code.
 // Keep in sync with src/preload/index.ts.
 import type { Settings } from '../shared/settings'
-import type { ArtDownload, ArtGame, ArtImage, ArtKind } from '../shared/online'
+import type { ArtDownload, ArtGame, ArtImage, ArtKind, ArtProviderId } from '../shared/online'
 import type {
   AppInfo,
   BackupInfo,
@@ -102,11 +102,11 @@ export interface LibraryApi {
     cores(profileId: string, romPath: string | null): Promise<{ core: string; likely: boolean }[]>
   }
   online: {
-    /** Searches SteamGridDB for a game by name. Needs the API key from Settings. */
-    searchGames(term: string): Promise<ArtGame[]>
-    listImages(gameId: number, kind: ArtKind): Promise<ArtImage[]>
-    /** Downloads one picture (only from steamgriddb.com) for the crop step. */
-    download(url: string): Promise<ArtDownload>
+    /** Searches one picture database by name. Some need an API key from Settings. */
+    searchGames(provider: ArtProviderId, term: string): Promise<ArtGame[]>
+    listImages(provider: ArtProviderId, id: string, kind: ArtKind): Promise<ArtImage[]>
+    /** Downloads one picture (only from that database's picture host) for the crop step. */
+    download(provider: ArtProviderId, url: string): Promise<ArtDownload>
   }
   covers: {
     /** Stores the cropped cover picture; returns the stored cover name. */

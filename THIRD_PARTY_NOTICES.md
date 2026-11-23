@@ -15,7 +15,6 @@ Artwork:
 - The app icon (Rancha) was created with an AI image tool by the project owner.
 - The interface icons come from **Flaticon** (www.flaticon.com), used under Flaticon's free license, which requires attribution. Credits found so far (author names taken from the icon pages):
   - Game icon by [sonnycandra](https://www.flaticon.com/free-icon/game_10953366) (pack "Essential UI") from www.flaticon.com
-  - Book icon by [Good Ware](https://www.flaticon.com/free-icon/book_864685) (pack "Hipster") from www.flaticon.com
   - Play/video icon: "UIcons" by [Flaticon](https://www.flaticon.com/free-icon-font/play-alt_3914307) (the page names Flaticon itself as author)
   - Apps icon: "UIcons" by [Flaticon](https://www.flaticon.com/free-icon-font/apps_3917618) (the page names Flaticon itself as author)
   - Note: five icon files ship with the app; the owner supplied links for the game, book, play and apps icons (the "video game" file is taken to be one of the supplied game/video icons — owner to confirm).
@@ -24,3 +23,7 @@ Artwork:
 Optional online feature: cover search uses the SteamGridDB API with the user's own key; its terms apply to that use.
 
 Run `npx license-checker --production --summary` in the project folder for a complete, current list of dependency licenses.
+
+## Online picture databases (only when you press Search online)
+- TMDB: this product uses the TMDB API but is not endorsed or certified by TMDB.
+- AniList, TVmaze and SteamGridDB: pictures are fetched on request; the pictures belong to their owners.

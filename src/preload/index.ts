@@ -3,7 +3,7 @@
 // Each function below sends one named message and returns the answer.
 import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import type { Settings } from '../shared/settings'
-import type { ArtDownload, ArtGame, ArtImage, ArtKind } from '../shared/online'
+import type { ArtDownload, ArtGame, ArtImage, ArtKind, ArtProviderId } from '../shared/online'
 import { IPC } from '../shared/ipc'
 import { pageUrl } from '../shared/reader'
 import type {
@@ -115,11 +115,11 @@ const api = {
       ipcRenderer.invoke(IPC.emulatorCores, profileId, romPath)
   },
   online: {
-    // SteamGridDB (needs the user's own API key, set in Settings).
-    searchGames: (term: string): Promise<ArtGame[]> => ipcRenderer.invoke(IPC.onlineSearch, term),
-    listImages: (gameId: number, kind: ArtKind): Promise<ArtImage[]> =>
-      ipcRenderer.invoke(IPC.onlineImages, gameId, kind),
-    download: (url: string): Promise<ArtDownload> => ipcRenderer.invoke(IPC.onlineDownload, url)
+    // Picture databases (some need the user's own API key, set in Settings).
+    searchGames: (provider: ArtProviderId, term: string): Promise<ArtGame[]> => ipcRenderer.invoke(IPC.onlineSearch, provider, term),
+    listImages: (provider: ArtProviderId, id: string, kind: ArtKind): Promise<ArtImage[]> =>
+      ipcRenderer.invoke(IPC.onlineImages, provider, id, kind),
+    download: (provider: ArtProviderId, url: string): Promise<ArtDownload> => ipcRenderer.invoke(IPC.onlineDownload, provider, url)
   },
   covers: {
     // Stores the cropped cover picture (JPEG/PNG bytes); returns its stored name.

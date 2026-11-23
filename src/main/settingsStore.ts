@@ -45,7 +45,7 @@ export class SettingsStore {
 
   reset(): Settings {
     // Backup preference and the API key survive a reset of the look and feel.
-    this.current = { ...DEFAULT_SETTINGS, autoBackup: this.current.autoBackup, steamGridDbKey: this.current.steamGridDbKey, emulators: this.current.emulators }
+    this.current = { ...DEFAULT_SETTINGS, autoBackup: this.current.autoBackup, steamGridDbKey: this.current.steamGridDbKey, tmdbKey: this.current.tmdbKey, emulators: this.current.emulators }
     this.save()
     return this.current
   }

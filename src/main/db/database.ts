@@ -7,7 +7,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { seedSampleLibrary } from './sampleLibrary'
+import { ensureMainSections, seedSampleLibrary } from './sampleLibrary'
 
 // `require` (instead of `import`) keeps the bundler from trying to resolve this
 // newer built-in module itself. The type import above is erased at build time.
@@ -134,6 +134,7 @@ export function openDatabase(filePath: string): DatabaseSync {
   db.exec('PRAGMA foreign_keys = ON')
 
   migrate(db, filePath)
+  ensureMainSections(db)
   return db
 }
 

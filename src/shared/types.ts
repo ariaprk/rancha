@@ -178,6 +178,7 @@ export interface ReaderSession extends BookSource {
 export type AutoCoverResult =
   | { status: 'ready'; name: string } // a cached picture exists: show library-cover://auto/<name>
   | { status: 'pdf' } // a PDF: the interface draws page 1 and sends it back
+  | { status: 'video' } // a video: the interface grabs one frame and sends it back
   | { status: 'none' } // no picture could be made
 
 // A picture the user chose for a cover, shown in the crop step. `previewUrl`

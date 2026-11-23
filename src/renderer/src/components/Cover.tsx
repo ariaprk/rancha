@@ -26,8 +26,8 @@ export default function Cover({ item }: { item: CoverInfo }) {
   const showImage = file !== undefined && file !== failedFile
   const style = { '--h': item.hue } as CSSProperties
   const appIcon = useProgramIcon(item.target, item.kind === 'launchable' && !showImage)
-  // A comic/PDF with no cover picture of its own shows its first page.
-  const wantsFirstPage = item.kind === 'readable' && file === undefined && !!item.id
+  // A comic/PDF with no cover picture of its own shows its first page; a video shows one frame.
+  const wantsFirstPage = (item.kind === 'readable' || item.kind === 'video') && file === undefined && !!item.id
   const first = useAutoCover(item.id, item.target, wantsFirstPage)
   const [failedAuto, setFailedAuto] = useState<string | null>(null)
   const firstPage = wantsFirstPage && first.url !== null && first.url !== failedAuto ? first.url : null

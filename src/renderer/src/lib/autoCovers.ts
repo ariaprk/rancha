@@ -7,10 +7,47 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { autoCoverUrl } from '../../../shared/cover'
 import { createQueue } from './queue'
 import { openPdfBook } from './pdfBook'
+import { previewTime, videoUrl } from '../../../shared/video'
 
 const answers = new Map<string, Promise<string | null>>()
 const lookups = createQueue(2)
 const pdfDrawing = createQueue(1)
+const videoGrabbing = createQueue(1)
+
+/** Grabs one frame of a video (see previewTime) and stores it as the item's automatic cover. */
+async function grabVideoFrame(itemId: string): Promise<string | null> {
+  const video = document.createElement('video')
+  video.muted = true
+  video.crossOrigin = 'anonymous' // with the CORS answer of the video address, lets the frame be read
+  video.preload = 'auto'
+  const when = (event: string) =>
+    new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error('The video took too long to load.')), 20000)
+      video.addEventListener(event, () => { window.clearTimeout(timer); resolve() }, { once: true })
+      video.addEventListener('error', () => { window.clearTimeout(timer); reject(new Error('This video cannot be shown here.')) }, { once: true })
+    })
+  try {
+    const loaded = when('loadedmetadata')
+    video.src = videoUrl(itemId)
+    await loaded
+    const seeked = when('seeked')
+    video.currentTime = previewTime(video.duration, Math.random())
+    await seeked
+    if (video.videoWidth === 0) return null
+    const scale = Math.min(1, 960 / video.videoWidth)
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(video.videoWidth * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
+    canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88))
+    if (!blob) return null
+    const name = await window.api.covers.saveAuto(itemId, new Uint8Array(await blob.arrayBuffer()))
+    return name === null ? null : autoCoverUrl(name)
+  } finally {
+    video.removeAttribute('src')
+    video.load() // lets go of the file
+  }
+}
 
 async function drawPdfCover(itemId: string, target: string): Promise<string | null> {
   const book = await window.api.reader.openBook(target)
@@ -37,6 +74,7 @@ function resolve(itemId: string, target: string): Promise<string | null> {
         const result = await window.api.covers.auto(itemId)
         if (result.status === 'ready') return autoCoverUrl(result.name)
         if (result.status === 'pdf') return await pdfDrawing(() => drawPdfCover(itemId, target))
+        if (result.status === 'video') return await videoGrabbing(() => grabVideoFrame(itemId))
         return null
       } catch (error) {
         console.warn('Could not make an automatic cover:', error)

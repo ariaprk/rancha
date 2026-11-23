@@ -48,4 +48,4 @@ Electron, TypeScript, React, Vite (electron-vite) and Node's built-in SQLite. Se
 Copyright (c) 2026 Aria Sama. All rights reserved. The program may be downloaded and used for personal use; the source code is not licensed for copying or reuse (see `LICENSE`). Third-party software: see `THIRD_PARTY_NOTICES.md`.
 
 ## Credits
-Icons by sonnycandra, Good Ware and Flaticon, from [Flaticon](https://www.flaticon.com) (details in `THIRD_PARTY_NOTICES.md`). Interface font: Poppins (SIL OFL 1.1).
+Icons by sonnycandra and Flaticon, from [Flaticon](https://www.flaticon.com) (details in `THIRD_PARTY_NOTICES.md`). Interface font: Poppins (SIL OFL 1.1).

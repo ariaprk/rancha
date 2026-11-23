@@ -21,6 +21,7 @@ import type {
   ReaderSession,
   ReorderDirection
 } from '../../shared/types'
+import { isProtectedSection } from '../../shared/protectedSections'
 import Breadcrumbs from './components/Breadcrumbs'
 import BulkTagDialog from './components/BulkTagDialog'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -628,6 +629,14 @@ export default function App() {
     setBusy(false)
   }
 
+  /** The ids that may be deleted (the four main sections are kept). */
+  function deletableIds(ids: string[]): string[] {
+    return ids.filter((id) => {
+      const item = byId.get(id)
+      return !item || !isProtectedSection(item)
+    })
+  }
+
   async function confirmDelete(item: LibraryItem) {
     setBusy(true)
     setDialogError(null)
@@ -757,7 +766,9 @@ export default function App() {
       { label: 'Remove a tag…', onSelect: () => openDialog({ type: 'bulkTag', mode: 'remove', ids }) },
       { label: 'Move to…', onSelect: () => openDialog({ type: 'bulkMove', ids }) },
       { label: '', separator: true, onSelect: () => undefined },
-      { label: 'Delete…', danger: true, onSelect: () => openDialog({ type: 'bulkDelete', ids }) },
+      ...(deletableIds(ids).length > 0
+        ? [{ label: 'Delete…', danger: true, onSelect: () => openDialog({ type: 'bulkDelete', ids: deletableIds(ids) }) }]
+        : []),
       { label: '', separator: true, onSelect: () => undefined },
       { label: 'Clear selection', onSelect: () => setSelection(NO_SELECTION) }
     ]
@@ -795,7 +806,7 @@ export default function App() {
         label: item.isFavorite ? 'Remove from favorites' : 'Add to favorites',
         onSelect: () => void setFavorite(item.id, !item.isFavorite)
       },
-      { label: 'Move to…', onSelect: () => openDialog({ type: 'move', item }) }
+      ...(isProtectedSection(item) ? [] : [{ label: 'Move to…', onSelect: () => openDialog({ type: 'move', item }) }])
     )
     entries.push({
       label: markLabel(item.kind, doneIds.has(item.id)),
@@ -808,10 +819,12 @@ export default function App() {
         { label: 'Move later', onSelect: () => void reorder(item, 'later') }
       )
     }
-    entries.push(
-      { label: '', separator: true, onSelect: () => undefined },
-      { label: 'Delete…', danger: true, onSelect: () => openDialog({ type: 'delete', item }) }
-    )
+    if (!isProtectedSection(item)) {
+      entries.push(
+        { label: '', separator: true, onSelect: () => undefined },
+        { label: 'Delete…', danger: true, onSelect: () => openDialog({ type: 'delete', item }) }
+      )
+    }
     return entries
   }
 
@@ -878,7 +891,9 @@ export default function App() {
       }
       if (event.key === 'Delete' && selectedIds.length > 1) {
         event.preventDefault()
-        openDialog({ type: 'bulkDelete', ids: selectedIds })
+        const ids = deletableIds(selectedIds)
+        if (ids.length === 0) info('The main sections cannot be deleted.')
+        else openDialog({ type: 'bulkDelete', ids })
         return
       }
       if (!selected) return
@@ -892,7 +907,8 @@ export default function App() {
         openDialog({ type: 'form', mode: { type: 'edit', item: selected } })
       } else if (event.key === 'Delete') {
         event.preventDefault()
-        openDialog({ type: 'delete', item: selected })
+        if (isProtectedSection(selected)) info(`“${selected.name}” is a main section and cannot be deleted.`)
+        else openDialog({ type: 'delete', item: selected })
       }
     }
     window.addEventListener('keydown', onKeyDown)
