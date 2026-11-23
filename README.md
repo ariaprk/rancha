@@ -21,7 +21,6 @@ Go to the **Releases** page and pick your system:
 | Windows 10/11 | `Rancha-…-windows-setup.exe` | Installer. |
 | Windows | `Rancha-…-windows-portable.exe` | No install, just run. |
 | Linux (x86_64) | `Rancha-…-linux-x64.AppImage` | `chmod +x` it, then run. |
-| Linux (x86_64) | `Rancha-…-linux-x64.tar.gz` | Extract it, then run `rancha` inside the folder. |
 
 ### Windows: "Windows protected your PC"
 The app is not code-signed (certificates cost money), so SmartScreen warns about unknown apps. Click **More info → Run anyway**. You can build it yourself from source if you prefer.
