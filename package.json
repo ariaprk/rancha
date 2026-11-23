@@ -1,5 +1,5 @@
 {
-  "name": "library-app",
+  "name": "rancha",
   "version": "0.2.0",
   "description": "A personal digital library and launcher",
   "main": "./out/main/index.js",
@@ -12,28 +12,28 @@
     "dist:linux": "electron-vite build && electron-builder --linux --publish never"
   },
   "dependencies": {
-    "node-unrar-js": "latest",
-    "pdfjs-dist": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "node-unrar-js": "2.0.2",
+    "pdfjs-dist": "6.4.299",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "latest",
-    "electron": "latest",
-    "electron-vite": "latest",
-    "typescript": "latest",
-    "vite": "latest",
-    "electron-builder": "latest"
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "electron": "45.2.1",
+    "electron-vite": "6.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "electron-builder": "26.18.0"
   },
   "author": "Aria Sama",
   "license": "UNLICENSED",
   "build": {
     "appId": "com.rancha.app",
-    "productName": "Rancha",
-    "copyright": "Copyright \u00a9 2026 Aria Sama",
+    "productName": "rancha",
+    "copyright": "Copyright © 2026 Aria Sama",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -69,7 +69,8 @@
     "linux": {
       "icon": "build/icon.png",
       "target": [
-        "AppImage"
+        "AppImage",
+        "tar.gz"
       ],
       "category": "Utility",
       "executableName": "rancha",
