@@ -36,6 +36,7 @@ jobs:
           path: |
             release/*.exe
             release/*.AppImage
+            release/*.tar.gz
           if-no-files-found: error
 
   publish:

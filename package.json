@@ -1,6 +1,14 @@
 {
+<<<<<<< HEAD
   "name": "library-app",
   "version": "0.2.0",
+||||||| parent of 0bed0ee (Rename project to rancha and ship tar.gz Linux build)
+  "name": "library-app",
+  "version": "0.1.0",
+=======
+  "name": "library-app",
+  "version": "0.2.0",
+>>>>>>> 0bed0ee (Rename project to rancha and ship tar.gz Linux build)
   "description": "A personal digital library and launcher",
   "main": "./out/main/index.js",
   "private": true,
@@ -32,7 +40,7 @@
   "license": "UNLICENSED",
   "build": {
     "appId": "com.rancha.app",
-    "productName": "Rancha",
+    "productName": "rancha",
     "copyright": "Copyright © 2026 Aria Sama",
     "directories": {
       "output": "release",
@@ -69,7 +77,8 @@
     "linux": {
       "icon": "build/icon.png",
       "target": [
-        "AppImage"
+        "AppImage",
+        "tar.gz"
       ],
       "category": "Utility",
       "executableName": "rancha",
