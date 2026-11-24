@@ -190,6 +190,20 @@ export type AutoCoverResult =
   | { status: 'video' } // a video: the interface grabs one frame and sends it back
   | { status: 'none' } // no picture could be made
 
+// What a music file's own tags say about the song (read by the backend and cached; every field may be missing).
+export interface SongInfo {
+  title?: string
+  artist?: string
+  album?: string
+  albumArtist?: string
+  year?: string
+  genre?: string
+  track?: number
+  disc?: number
+  duration?: number // seconds
+  hasPicture?: boolean // the file holds a cover picture (shown through the automatic cover)
+}
+
 // A picture the user chose for a cover, shown in the crop step. `previewUrl`
 // is the picture itself (a downsized copy, as a data: URL).
 export interface CoverPreview {

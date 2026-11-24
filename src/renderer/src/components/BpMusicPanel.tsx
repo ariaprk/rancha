@@ -1,8 +1,10 @@
 // Big Picture's music panel: the controls and the player's settings, large enough for a controller or a TV.
+// The playing song's cover, title, artist and album come from its tags when they are known.
 import type { MusicCorner, MusicOverlay, Settings } from '../../../shared/settings'
 import type { LibraryItem } from '../../../shared/types'
 import type { Player } from '../state/usePlayer'
-import { QueueList, SeekBar, Transport, VolumeSlider } from './MusicControls'
+import { QueueList, QueueToggle, SeekBar, Transport, VolumeSlider, useNowPlaying } from './MusicControls'
+import Cover from './Cover'
 
 export interface BpMusic {
   player: Player
@@ -13,21 +15,31 @@ export interface BpMusic {
 
 export default function BpMusicPanel({ music, onClose }: { music: BpMusic; onClose: () => void }) {
   const { player, settings, songs, onChange } = music
+  const now = useNowPlaying(player.current)
   return (
     <div className="bp-music-panel" role="dialog" aria-label="Music">
       <div className="bp-music-row">
-        <h3>{player.current ? player.current.name : 'Music'}</h3>
+        <div className="bp-music-head">
+          {player.current && <span className="bp-music-art" aria-hidden="true"><Cover key={player.current.id} item={player.current} /></span>}
+          <div className="bp-music-titles">
+            <h3>{player.current ? now.title : 'Music'}</h3>
+            {player.current && now.byline && <p className="bp-music-byline">{now.byline}</p>}
+          </div>
+        </div>
         <button type="button" className="mp-btn" onClick={onClose} aria-label="Close music panel">✕</button>
       </div>
       <SeekBar player={player} />
       <Transport player={player} settings={settings} big />
-      <VolumeSlider player={player} settings={settings} />
+      <div className="mp-row">
+        <VolumeSlider player={player} settings={settings} />
+        <QueueToggle player={player} settings={settings} onChange={onChange} />
+      </div>
       {songs.length > 0 && (
         <button type="button" className="btn btn-small btn-primary" onClick={() => player.play(songs[0], songs)}>
           Play all music ({songs.length})
         </button>
       )}
-      <QueueList player={player} />
+      {settings.musicShowQueue && <QueueList player={player} />}
       <label className="bp-music-row">
         Small player
         <select value={settings.musicOverlay} onChange={(event) => onChange({ musicOverlay: event.target.value as MusicOverlay })}>

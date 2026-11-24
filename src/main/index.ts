@@ -16,6 +16,8 @@ import type { CoverPreview } from '../shared/types'
 import { APP_ID, APP_NAME } from './appInfo'
 import { applyPendingRestore, runAutoBackup } from './backup'
 import { AutoCovers } from './autoCovers'
+import { SongInfoCache } from './songInfo'
+import { serveFile } from './fileRange'
 import { CoverStore } from './covers'
 import { openDatabase } from './db/database'
 import { ItemRepository } from './db/itemRepository'
@@ -29,7 +31,7 @@ import { ReaderSessions } from './reader/readerSessions'
 
 // Keep the data folder tied to the permanent APP_ID, not the display name.
 // Must happen before the app is ready. On Windows this is
-// %APPDATA%\personal-library
+// %APPDATA%\rancha (Linux: ~/.config/rancha)
 app.setPath('userData', join(app.getPath('appData'), APP_ID))
 
 // Declares our private address scheme for cover images (library-cover://).
@@ -43,6 +45,7 @@ protocol.registerSchemesAsPrivileged([
 
 let repository: ItemRepository | null = null
 let readerSessionsRef: ReaderSessions | null = null
+let songInfoRef: SongInfoCache | null = null
 let databaseError: string | null = null
 
 // Turns any chosen picture into a resized JPEG (at most 600 x 900 pixels):
@@ -234,6 +237,9 @@ app.whenReady().then(() => {
   const settings = new SettingsStore(join(userData, 'settings.json'))
   const covers = new CoverStore(join(userData, 'covers'), encodeCover, encodeCoverBytes, encodeWallpaperBytes)
   const autoCovers = new AutoCovers(join(userData, 'cover-cache'), encodeCoverBytes)
+  // Song details read from the music files' tags, cached next to the covers (the database is not changed).
+  const songInfo = new SongInfoCache(join(userData, 'song-info.json'))
+  songInfoRef = songInfo
 
   // Serve cover images to the interface: library-cover://file/<name>.jpg for covers
   // the user chose, library-cover://auto/<name>.jpg for automatic first-page covers.
@@ -252,14 +258,9 @@ app.whenReady().then(() => {
       const id = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ''))
       const item = repository?.getItem(id)
       if (!item || item.kind !== 'video' || !item.target) return new Response('Not found', { status: 404 })
-      const headers: Record<string, string> = {}
-      const range = request.headers.get('range')
-      if (range) headers.range = range // lets the player jump to a moment without reading the whole file
-      const file = await net.fetch(pathToFileURL(splitChapterTarget(item.target).path).toString(), { headers })
+      // Range requests are answered by hand (see fileRange.ts), so the player can jump to a moment.
       // The picture drawn from the video must not be blocked as "foreign", so the answer says it may be used.
-      const answer = new Headers(file.headers)
-      answer.set('Access-Control-Allow-Origin', '*')
-      return new Response(file.body, { status: file.status, statusText: file.statusText, headers: answer })
+      return await serveFile(splitChapterTarget(item.target).path, request, { 'Access-Control-Allow-Origin': '*' })
     } catch {
       return new Response('Could not read this video', { status: 500 })
     }
@@ -271,10 +272,8 @@ app.whenReady().then(() => {
       const id = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ''))
       const item = repository?.getItem(id)
       if (!item || item.kind !== 'audio' || !item.target) return new Response('Not found', { status: 404 })
-      const headers: Record<string, string> = {}
-      const range = request.headers.get('range')
-      if (range) headers.range = range
-      return await net.fetch(pathToFileURL(item.target).toString(), { headers })
+      // Built by hand (see fileRange.ts): net.fetch ignores range requests on files, which broke seeking.
+      return await serveFile(item.target, request)
     } catch {
       return new Response('Could not read this song', { status: 500 })
     }
@@ -309,6 +308,7 @@ app.whenReady().then(() => {
     // Tidy up cover pictures that no item uses (e.g. from a cancelled edit).
     covers.sweep(new Set(repository.listCoverFiles()))
     autoCovers.sweep(repository.listItems().map((item) => item.id))
+    songInfo.sweep(repository.listItems().map((item) => item.id))
     // Keep a few automatic backups (at most one per day).
     if (settings.get().autoBackup) {
       try {
@@ -332,6 +332,7 @@ app.whenReady().then(() => {
     }),
     covers,
     autoCovers,
+    songInfo,
     coverPreview: makeCoverPreview,
     pagePreview: makePagePreview,
     settings,
@@ -356,6 +357,7 @@ app.whenReady().then(() => {
 // Close the database cleanly when the app quits.
 app.on('before-quit', () => {
   void readerSessionsRef?.closeAll()
+  songInfoRef?.saveNow() // song details read in the last moments are not lost
   repository?.close()
   repository = null
 })

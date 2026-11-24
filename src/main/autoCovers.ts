@@ -15,6 +15,8 @@ import { splitChapterTarget } from '../shared/chapterTarget'
 import type { AutoCoverResult, LibraryItem } from '../shared/types'
 import { openPageSource, type PageSource } from './reader/pageSources'
 import { isPdfPath } from './reader/readerSessions'
+import type { SongTags } from './musicTags'
+import { readSongTags } from './musicTagsContainers'
 
 export function idHash(itemId: string): string {
   return createHash('sha1').update(itemId).digest('hex')
@@ -24,6 +26,7 @@ export class AutoCovers {
   private readonly dir: string
   private readonly encode: (bytes: Buffer) => Buffer
   private readonly open: (target: string) => Promise<PageSource>
+  private readonly readTags: (path: string) => Promise<SongTags>
   private readonly failed = new Set<string>() // names that failed this session: do not retry
   private queue: Promise<unknown> = Promise.resolve()
 
@@ -31,16 +34,18 @@ export class AutoCovers {
   constructor(
     dir: string,
     encode: (bytes: Buffer) => Buffer,
-    open: (target: string) => Promise<PageSource> = openPageSource
+    open: (target: string) => Promise<PageSource> = openPageSource,
+    readTags: (path: string) => Promise<SongTags> = readSongTags
   ) {
     this.dir = dir
     this.encode = encode
     this.open = open
+    this.readTags = readTags
     mkdirSync(dir, { recursive: true })
   }
 
   private async nameFor(item: LibraryItem): Promise<string | null> {
-    if ((item.kind !== 'readable' && item.kind !== 'video') || !item.target) return null
+    if ((item.kind !== 'readable' && item.kind !== 'video' && item.kind !== 'audio') || !item.target) return null
     try {
       const info = await stat(splitChapterTarget(item.target).path)
       return `${idHash(item.id)}-${Math.floor(info.mtimeMs)}-${info.size}.jpg`
@@ -55,9 +60,9 @@ export class AutoCovers {
     if (name === null || this.failed.has(name)) return { status: 'none' }
     if (existsSync(join(this.dir, name))) return { status: 'ready', name }
     if (item.kind === 'video') return { status: 'video' }
-    if (isPdfPath(item.target as string)) return { status: 'pdf' }
+    if (item.kind !== 'audio' && isPdfPath(item.target as string)) return { status: 'pdf' }
     // One at a time: opening a big RAR can be slow and must not pile up.
-    const made = this.queue.then(() => this.generate(item, name))
+    const made = this.queue.then(() => (item.kind === 'audio' ? this.generateFromTags(item, name) : this.generate(item, name)))
     this.queue = made.catch(() => undefined)
     return made
   }
@@ -72,6 +77,19 @@ export class AutoCovers {
       } finally {
         await source.close().catch(() => undefined)
       }
+    } catch {
+      this.failed.add(name)
+      return { status: 'none' }
+    }
+  }
+
+  /** A song's cover: the picture stored inside the music file's tags (ID3, FLAC, MP4...), if it has one. */
+  private async generateFromTags(item: LibraryItem, name: string): Promise<AutoCoverResult> {
+    try {
+      const picture = (await this.readTags(item.target as string)).picture
+      if (!picture) throw new Error('No picture in the tags.')
+      this.store(idHash(item.id), name, this.encode(picture.data))
+      return { status: 'ready', name }
     } catch {
       this.failed.add(name)
       return { status: 'none' }

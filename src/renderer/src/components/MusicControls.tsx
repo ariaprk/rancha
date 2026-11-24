@@ -1,8 +1,25 @@
 // Small pieces shared by the overlay player, the Music page and the Big Picture panel.
-import type { MouseEvent, ReactNode } from 'react'
+import { useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { formatTime } from '../../../shared/playerQueue'
+import ContextMenu, { type MenuEntry } from './ContextMenu'
+import Slider from './Slider'
 import type { Settings } from '../../../shared/settings'
+import type { LibraryItem, SongInfo } from '../../../shared/types'
 import type { Player } from '../state/usePlayer'
+import { joinParts, songArtist, songTitle, useNearScreen, useSongInfo } from '../lib/songInfo'
+
+/** What the players show about the playing song: its own title and artist (from its tags) when known. */
+export function useNowPlaying(item: LibraryItem | null): { info: SongInfo | null; title: string; artist?: string; byline: string } {
+  const info = useSongInfo(item?.id)
+  const artist = songArtist(info)
+  return {
+    info,
+    title: item ? songTitle(item, info) : '',
+    artist,
+    byline: joinParts(artist, info?.album)
+  }
+}
 
 const Svg = ({ children, size = 18 }: { children: ReactNode; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -59,47 +76,212 @@ export function Transport({ player, settings, big }: { player: Player; settings:
   )
 }
 
+// Song position: click to jump, drag to scrub (the song moves when the button is released),
+// arrow keys = 5 seconds after a click. A bubble shows the time under the pointer.
 export function SeekBar({ player }: { player: Player }) {
-  const max = Math.max(1, Math.floor(player.duration))
+  const known = player.current !== null && player.duration > 0
+  const max = known ? player.duration : 1
   return (
     <div className="mp-seek">
       <span className="mp-time">{formatTime(player.time)}</span>
-      <input
-        type="range"
-        min={0}
+      <Slider
+        className="slider-seek"
+        value={known ? Math.min(max, player.time) : 0}
         max={max}
-        value={Math.min(max, Math.floor(player.time))}
-        onChange={(event) => player.seek(Number(event.target.value))}
-        aria-label="Position in the song"
-        disabled={player.current === null}
-        {...noFocus}
+        step={5}
+        label="Position in the song"
+        valueText={`${formatTime(player.time)} of ${formatTime(player.duration)}`}
+        tip={known ? (seconds) => formatTime(seconds) : undefined}
+        onChange={(seconds) => player.seek(seconds)}
+        disabled={!known}
       />
       <span className="mp-time">{formatTime(player.duration)}</span>
     </div>
   )
 }
 
+const VolumeGlyph = ({ level }: { level: number }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" />
+    {level === 0 && <path d="M17 9l5 6M22 9l-5 6" />}
+    {level > 0 && <path d="M16.5 9.5a3.5 3.5 0 0 1 0 5" />}
+    {level > 50 && <path d="M19 7a7 7 0 0 1 0 10" />}
+  </svg>
+)
+
+// Volume: click, drag (changes while dragging) or turn the mouse wheel over it (5% per notch).
+// The speaker button mutes and brings the last volume back.
 export function VolumeSlider({ player, settings }: { player: Player; settings: Settings }) {
+  const volume = Number.isFinite(settings.musicVolume) ? settings.musicVolume : 70
+  const before = useRef(volume > 0 ? volume : 70)
+  if (volume > 0) before.current = volume
   return (
-    <label className="mp-volume" title="Volume">
-      <span aria-hidden="true">🔊</span>
-      <input type="range" min={0} max={100} value={settings.musicVolume} onChange={(event) => player.setVolume(Number(event.target.value))} aria-label="Volume" {...noFocus} />
-    </label>
+    <div className="mp-volume" title={`Volume ${Math.round(volume)}%`}>
+      <button type="button" className="mp-btn mp-vol-btn" title={volume === 0 ? 'Unmute' : 'Mute'} onClick={() => player.setVolume(volume === 0 ? before.current : 0)} {...noFocus}>
+        <VolumeGlyph level={volume} />
+      </button>
+      <Slider
+        className="slider-volume"
+        value={volume}
+        max={100}
+        step={5}
+        label="Volume"
+        valueText={`${Math.round(volume)}%`}
+        tip={(percent) => `${Math.round(percent)}%`}
+        onChange={(percent) => player.setVolume(percent)}
+        live
+        wheel
+      />
+    </div>
   )
 }
 
-export function QueueList({ player }: { player: Player }) {
-  if (player.queue.length === 0) return <p className="muted small mp-empty">The queue is empty. Play a song from the Music section.</p>
+const QueueGlyph = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 6h13M3 12h13M3 18h8M17 15v6l5-3z" />
+  </svg>
+)
+
+/** Shows or hides the queue in every player (the choice is saved). The number is how many songs wait in it. */
+export function QueueToggle({ player, settings, onChange }: { player: Player; settings: Settings; onChange: (patch: Partial<Settings>) => void }) {
+  const shown = settings.musicShowQueue
+  const count = player.queue.length
   return (
-    <ol className="mp-queue">
-      {player.queue.map((song) => (
-        <li key={song.id}>
-          <button type="button" className={`mp-q-item ${player.current?.id === song.id ? 'now' : ''}`} onClick={() => player.playFromQueue(song.id)} title={song.name} {...noFocus}>
-            <span className="mp-q-mark">{player.current?.id === song.id ? (player.playing ? '▶' : '❚❚') : ''}</span>
-            <span className="mp-q-name">{song.name}</span>
-          </button>
-        </li>
-      ))}
-    </ol>
+    <button
+      type="button"
+      className={`mp-btn mp-queue-btn ${shown ? 'on' : ''}`}
+      title={`${shown ? 'Hide' : 'Show'} the queue${count > 0 ? ` (${count} ${count === 1 ? 'song' : 'songs'})` : ''}`}
+      aria-pressed={shown}
+      onClick={() => onChange({ musicShowQueue: !shown })}
+      {...noFocus}
+    >
+      <QueueGlyph />
+      {count > 0 && <span className="mp-badge">{count > 99 ? '99+' : count}</span>}
+    </button>
+  )
+}
+
+// Queue rows are dragged with their own message type, so library drops (folders, files from the
+// desktop) never react to them.
+const QUEUE_MIME = 'application/x-rancha-queue'
+
+/**
+ * The songs added by hand, in the order they will play. Drag a row to change its place;
+ * right-click for Play now / Remove; double-click plays it now.
+ */
+export function QueueList({ player }: { player: Player }) {
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropAt, setDropAt] = useState<number | null>(null) // the gap the dragged song would land in
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string; index: number } | null>(null)
+  const queue = player.queue
+
+  if (queue.length === 0) {
+    return <p className="muted small mp-empty">The queue is empty. Right-click a song and choose “Add to queue”.</p>
+  }
+
+  const endDrag = () => {
+    setDragId(null)
+    setDropAt(null)
+  }
+
+  const gapAt = (event: DragEvent<HTMLElement>, index: number) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    return event.clientY > box.top + box.height / 2 ? index + 1 : index
+  }
+
+  const entries = (id: string, index: number): MenuEntry[] => [
+    { label: 'Play now', onSelect: () => player.playNow(id) },
+    ...(index > 0 ? [{ label: 'Move to the top', onSelect: () => player.moveInQueue(id, 0) }] : []),
+    ...(index < queue.length - 1 ? [{ label: 'Move to the bottom', onSelect: () => player.moveInQueue(id, queue.length) }] : []),
+    { label: 'Remove from queue', onSelect: () => player.removeFromQueue(id) },
+    { label: '', separator: true, onSelect: () => undefined },
+    { label: 'Clear the queue', danger: true, onSelect: player.clearQueue }
+  ]
+
+  return (
+    <>
+      <ol className={`mp-queue ${dragId ? 'sorting' : ''}`}>
+        {queue.map((song, index) => (
+          <QueueRow
+            key={song.id}
+            song={song}
+            position={index + 1}
+            dragging={dragId === song.id}
+            dropBefore={dragId !== null && dropAt === index}
+            dropAfter={dragId !== null && index === queue.length - 1 && dropAt === queue.length}
+            onDoubleClick={() => player.playNow(song.id)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setMenu({ x: event.clientX, y: event.clientY, id: song.id, index })
+            }}
+            onDragStart={(event) => {
+              event.dataTransfer.setData(QUEUE_MIME, song.id)
+              event.dataTransfer.effectAllowed = 'move'
+              setDragId(song.id)
+            }}
+            onDragEnd={endDrag}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes(QUEUE_MIME)) return
+              event.preventDefault() // "you may drop here"
+              event.dataTransfer.dropEffect = 'move'
+              const gap = gapAt(event, index)
+              if (gap !== dropAt) setDropAt(gap)
+            }}
+            onDrop={(event) => {
+              if (!event.dataTransfer.types.includes(QUEUE_MIME)) return
+              event.preventDefault()
+              event.stopPropagation()
+              const id = event.dataTransfer.getData(QUEUE_MIME)
+              if (id) player.moveInQueue(id, gapAt(event, index))
+              endDrag()
+            }}
+          />
+        ))}
+      </ol>
+      {/* Drawn on the page itself: the players are blurred panels, which would trap and clip a menu placed inside them. */}
+      {menu &&
+        createPortal(
+          <ContextMenu className="over-player" x={menu.x} y={menu.y} entries={entries(menu.id, menu.index)} onClose={() => setMenu(null)} />,
+          document.body
+        )}
+    </>
+  )
+}
+
+interface RowProps {
+  song: LibraryItem
+  position: number
+  dragging: boolean
+  dropBefore: boolean
+  dropAfter: boolean
+  onDoubleClick: () => void
+  onContextMenu: (event: MouseEvent<HTMLLIElement>) => void
+  onDragStart: (event: DragEvent<HTMLLIElement>) => void
+  onDragEnd: () => void
+  onDragOver: (event: DragEvent<HTMLLIElement>) => void
+  onDrop: (event: DragEvent<HTMLLIElement>) => void
+}
+
+// One song of the queue: a grip, its title, and its artist in a dimmer color (read once it is near the screen).
+// Not a button on purpose: it never takes the keyboard focus, so Space/Enter keep working in the reader or a game list.
+function QueueRow({ song, position, dragging, dropBefore, dropAfter, ...handlers }: RowProps) {
+  const [ref, near] = useNearScreen<HTMLLIElement>()
+  const info = useSongInfo(near ? song.id : null)
+  const title = songTitle(song, info)
+  const artist = songArtist(info)
+  return (
+    <li
+      ref={ref}
+      className={`mp-q-item ${dragging ? 'dragging' : ''} ${dropBefore ? 'drop-before' : ''} ${dropAfter ? 'drop-after' : ''}`}
+      draggable
+      title={`${artist ? `${title} — ${artist}` : title}\nDrag to change the order · right-click for more`}
+      {...handlers}
+    >
+      <span className="mp-q-grip" aria-hidden="true">⋮⋮</span>
+      <span className="mp-q-mark">{position}</span>
+      <span className="mp-q-name">{title}</span>
+      {artist && <span className="mp-q-artist">{artist}</span>}
+    </li>
   )
 }

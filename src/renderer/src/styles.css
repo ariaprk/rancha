@@ -2768,7 +2768,8 @@ button, input, select, textarea { font-family: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== 34. Music player: overlay, Music page header, Big Picture panel ===== */
-.mini-player { --text: #f4f6fc; --text-dim: rgba(244,246,252,.7); position: fixed; z-index: 900; width: 320px; color: var(--text); background: rgba(20,22,32,.94); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.16); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); overflow: hidden; }
+/* The small player follows the theme (dark, light, airy): its colors come from the theme's own variables. */
+.mini-player { position: fixed; z-index: 900; width: 320px; color: var(--text); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
 .mini-player.compact { width: auto; max-width: 260px; border-radius: 999px; }
 .mini-player.compact .mp-head { padding: 4px 6px 4px 8px; gap: 6px; }
 .mini-player.compact .mp-art { width: 22px; height: 22px; border-radius: 50%; }
@@ -2891,3 +2892,77 @@ button, input, select, textarea { font-family: inherit; }
 .vp-problem { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, 90%); padding: 22px; border-radius: 16px; text-align: center; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow); }
 .vp-problem p { margin: 0 0 16px; line-height: 1.5; }
 .vp-problem-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* ---- 34. Slider: the music player's position and volume bars (click, drag, wheel; no focus ring) ---- */
+.slider { position: relative; flex: 1; min-width: 60px; height: 18px; display: flex; align-items: center; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.slider:focus, .slider:focus-visible { outline: none; }
+.slider.disabled { cursor: default; opacity: 0.45; }
+.slider-track { position: relative; width: 100%; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 18%, transparent); transition: height var(--t-fast) var(--ease); }
+.slider-fill { position: absolute; inset: 0 auto 0 0; width: var(--pct); border-radius: inherit; background: linear-gradient(90deg, var(--accent-1, var(--accent)), var(--accent-2, var(--accent))); }
+.slider-thumb { position: absolute; top: 50%; left: var(--pct); width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%) scale(0); transition: transform var(--t-fast) var(--ease); }
+.slider:not(.disabled):hover .slider-track, .slider.dragging .slider-track { height: 6px; }
+.slider:not(.disabled):hover .slider-thumb, .slider.dragging .slider-thumb, .slider:focus-visible .slider-thumb { transform: translate(-50%, -50%) scale(1); }
+.slider-tip { position: absolute; bottom: calc(100% + 4px); transform: translateX(-50%); padding: 2px 6px; border-radius: 6px; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; color: #fff; background: rgba(10, 12, 18, 0.88); z-index: 5; }
+.slider-volume { flex: 1; min-width: 70px; }
+.mp-vol-btn { flex: none; }
+
+/* ---- 35. Song details from the files' tags (cover, title, artist, album), like Tauon Music Box ---- */
+.mp-art, .mh-art, .bp-music-art { position: relative; overflow: hidden; }
+.mp-art .cover, .mh-art .cover, .bp-music-art .cover { position: absolute; inset: 0; }
+.mp-art .cover-initials, .mp-art .cover-icon, .bp-music-art .cover-initials { display: none; }
+.mh-art .cover-initials { font-size: 22px; }
+.mh-art { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.mini-player.expanded .mp-art { width: 44px; height: 44px; border-radius: 10px; }
+.mp-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mp-head-text .mp-title { flex: none; }
+.mp-byline { font-size: 12px; color: var(--text-dim, #aab); }
+.mh-artist { font-size: 14px; font-weight: 600; color: var(--text-dim, #aab); min-width: 0; margin-top: -6px; }
+.mh-meta { font-size: 12px; color: var(--text-dim, #aab); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; }
+.mp-q-item { align-items: baseline; }
+.mp-q-artist { flex: 0 1 auto; max-width: 45%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--text-dim, #aab); font-weight: 400; }
+.bp-music-head { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.bp-music-art { width: 56px; height: 56px; border-radius: 10px; flex: none; }
+.bp-music-titles { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bp-music-titles h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-music-byline { margin: 0; font-size: 13px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.song-details-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 4px 0 0; font-size: 13px; }
+.song-details-row { display: contents; }
+.song-details-row dt { color: var(--text-dim, #aab); }
+.song-details-row dd { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Music: list view, queue (1.0.0) ---------- */
+/* The Music section's list: cover, name (artist · album under it) and item count only. */
+.row.music-row { grid-template-columns: 44px minmax(160px, 1fr) 60px; }
+.row-sort { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; margin-left: -6px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.row-sort:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.row-sort.active { color: var(--text); }
+.row-sort-arrow { font-size: 9px; opacity: 0; transition: opacity var(--t-fast) var(--ease); }
+.row-sort:hover .row-sort-arrow { opacity: 0.45; }
+.row-sort.active .row-sort-arrow { opacity: 1; color: var(--accent); }
+
+/* Volume + queue button on one line. */
+.mp-row { display: flex; align-items: center; gap: 6px; }
+.mp-row .mp-volume { flex: 1; min-width: 0; }
+.mp-queue-btn { position: relative; flex: none; }
+.mp-badge { position: absolute; top: 0; right: -2px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; font-size: 9px; font-weight: 700; line-height: 15px; text-align: center; color: #fff; background: var(--accent); pointer-events: none; }
+
+.music-header.no-queue { grid-template-columns: minmax(0, 1fr); }
+.mh-queue-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mh-queue-title .mp-btn { min-width: 26px; height: 26px; font-size: 12px; }
+
+/* Queue rows: drag to reorder, right-click for more. */
+.mp-q-item { position: relative; align-items: center; user-select: none; cursor: grab; }
+.mp-q-item:active { cursor: grabbing; }
+.mp-q-item.dragging { opacity: 0.4; }
+.mp-q-item.drop-before::before, .mp-q-item.drop-after::after { content: ''; position: absolute; left: 6px; right: 6px; height: 2px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+.mp-q-item.drop-before::before { top: -1px; }
+.mp-q-item.drop-after::after { bottom: -1px; }
+.mp-queue.sorting .mp-q-item:hover { background: transparent; }
+.mp-q-grip { flex: none; font-size: 11px; letter-spacing: -3px; color: var(--text-dim); opacity: 0.5; }
+.mp-q-item:hover .mp-q-grip { opacity: 1; }
+.mp-q-mark { font-variant-numeric: tabular-nums; color: var(--text-dim); text-align: right; min-width: 16px; width: auto; }
+
+/* A menu opened from a player sits above the floating player. */
+.context-menu.over-player { z-index: 1000; }
+/* Big Picture's music panel is always dark: its text (and the queue inside it) stays light in every theme. */
+.bp-music-panel { --text: #f4f6fc; --text-dim: rgba(244, 246, 252, 0.7); }

@@ -30,7 +30,7 @@ Note for M4: the page's Content-Security-Policy only allows images from the app 
 
 ## Milestone 3: data model + persistent storage — DONE (owner confirmed everything works)
 Built (no new packages; uses SQLite built into Electron 44's Node 24 via `node:sqlite`):
-- Database file `library.db` in `%APPDATA%\personal-library\` (folder fixed by APP_ID, independent of the display name)
+- Database file `library.db` in `%APPDATA%\rancha\` (folder fixed by APP_ID, independent of the display name)
 - Schema v1: `items` (one table for all kinds, parent_id tree, JSON `meta`, spare columns target/cover_path/icon_path for M4+) and `item_tags`
 - Migrations via `PRAGMA user_version`; automatic copy to `backups\` before upgrading an existing library; refuses databases from newer app versions
 - Sample library is written into the database ONCE on first run (it now lives in src/main/db/sampleLibrary.ts); the interface loads everything from the database through IPC
@@ -49,7 +49,7 @@ Built (no new packages):
 - Item form: name, location (Browse... / Folder... for comics), description, tags (comma separated), cover image or placeholder color. Same form for editing (right-click > Edit, F2, or status-bar Edit).
 - Delete (Delete key, right-click, status bar) with confirmation; deleting a collection deletes everything inside it and the cover copies; real files are never touched.
 - Move: right-click / status bar "Move to...", or drag an item onto a folder card, a sidebar section, Home, or a breadcrumb. Cycles are refused. "Earlier"/"Later" reorder in Custom sort (collections and plain items are ordered separately because collections always list first).
-- Covers: chosen image is resized (max 600x900 JPEG, via Electron nativeImage; PNG/JPG/BMP only) and copied to %APPDATA%\personal-library\covers\<uuid>.jpg; shown through the private scheme library-cover://file/<name> (CSP img-src updated). Unused covers are swept at startup. Transparent PNGs get a black background (JPEG).
+- Covers: chosen image is resized (max 600x900 JPEG, via Electron nativeImage; PNG/JPG/BMP only) and copied to %APPDATA%\rancha\covers\<uuid>.jpg; shown through the private scheme library-cover://file/<name> (CSP img-src updated). Unused covers are swept at startup. Transparent PNGs get a black background (JPEG).
 - Breadcrumb root now says "Home" (was "Library"). Sidebar lists top-level collections only. Click on empty space clears the selection.
 - Right-click menu on any item (also folders). Single click on a folder still opens it.
 - Code: src/main/{covers,fileKinds,validate,ipc}.ts, repository extended (create/update/delete/move/moveWithinFolder/listCoverFiles), new renderer components ItemDialog, MoveDialog, ConfirmDialog, Modal, ContextMenu, state/useItemDrop.ts.
@@ -87,7 +87,7 @@ Not done on purpose: launch arguments / working-directory options, web or steam:
 Built (no new packages):
 - Settings now live in `settings.json` in the data folder (written safely via a temp file + rename; a damaged file is set aside as settings.damaged-<time>.json and defaults are used). Old localStorage settings are carried over once. Every value is validated (src/shared/settings.ts), so a bad file can never break the app. The sort order is remembered too.
 - New options (Settings > Layout and style): interface size 80-140% (Electron zoom), corners Sharp/Soft/Round, frosted glass Off/Normal/Strong (Off makes surfaces nearly solid), background glow On/Off.
-- Backup (Settings > Backup and restore): "Create backup..." asks for a destination and writes a new folder `personal-library-backup-<date>_<time>` containing library.db (consistent snapshot via SQLite VACUUM INTO), covers\, settings.json, backup-info.json. Your media files themselves are never copied.
+- Backup (Settings > Backup and restore): "Create backup..." asks for a destination and writes a new folder `rancha-backup-<date>_<time>` containing library.db (consistent snapshot via SQLite VACUUM INTO), covers\, settings.json, backup-info.json. Your media files themselves are never copied.
 - Restore: "Restore..." picks a backup folder, validates it (real library database, integrity check, not from a newer app), shows item count/date, asks to confirm, then restarts. The swap is done at the START of the next run, before the database opens: the current library is moved (not deleted) to backups\before-restore-<time>\ and the backup takes its place, so a restore can always be undone by restoring that folder.
 - Automatic backups (On by default, switchable): at startup, at most one per 20 hours, keeps the newest 5 in backups\auto\. "Open folder" button for the backups folder.
 - Code: src/shared/settings.ts, src/main/{settingsStore,backup}.ts, repository snapshotTo/countItems, renderer components/BackupPanel.tsx, state/useSettings.ts (now async).
@@ -246,10 +246,10 @@ NOT verified (needs the owner's PC): the real mouse side buttons in Electron on 
 - NAME: the app is still called "Library" (working title). Owner asked to be reminded at the last moment, i.e. BEFORE Milestone 10 packaging, to choose the final name. Put the name in one constant (planned for Milestone 3) and keep the data folder independent of the display name (fixed internal ID).
 
 ## Known issues / risks
-- `npm.cmd run typecheck` run by the owner on their PC (2026-10-17, after Milestone 7): clean, no errors. `npm.cmd run build` (production build) has still not been reported on; do it before Milestone 10 packaging. Run commands from the folder that contains package.json (C:\\Projects\\library-app on the owner's PC).
+- `npm.cmd run typecheck` run by the owner on their PC (2026-10-17, after Milestone 7): clean, no errors. `npm.cmd run build` (production build) has still not been reported on; do it before Milestone 10 packaging. Run commands from the folder that contains package.json (C:\\Projects\\rancha on the owner's PC).
 - The build sandbox cannot reach the npm registry, so Claude cannot install, type-check, build or run anything. All checking happens on the owner's PC.
 - On the owner's PowerShell, `npm` must be typed `npm.cmd` (script-execution policy). Use `npm.cmd` / `npx.cmd` in all instructions.
-- Project root on the owner's PC is C:\Projects\library-app\library-app (nested folder from unzipping); the folder with package.json is the real root.
+- Project root on the owner's PC is C:\Projects\rancha\rancha (nested folder from unzipping); the folder with package.json is the real root.
 - package.json uses "latest" for dependencies; package-lock.json (created on the owner's PC) pins them.
 
 ## Next step
@@ -364,7 +364,7 @@ NOT verified (needs the owner's PC): the real mouse side buttons in Electron on 
 - Verified in the test browser (screenshots checked); other form errors (e.g. missing name) still use the old line at the bottom.
 
 ## Name and icon (decided)
-- Final name: **Rancha** (APP_NAME in src/main/appInfo.ts, window title, Settings fallback). APP_ID stays `personal-library`, so the data folder is unchanged and existing libraries are kept.
+- Final name: **Rancha** (APP_NAME in src/main/appInfo.ts, window title, Settings fallback). APP_ID was `personal-library` until 2026-11-25, then changed to `rancha` (data folder `%APPDATA%\rancha`, Linux `~/.config/rancha`). No automatic move: the release notes must tell users of older versions to move their old `personal-library` folder to the new place by hand.
 - App icon saved at build/icon.png (1024x1024) and build/icon-256.png; used later by packaging (Milestone 10). Not yet wired into the window.
 - License of the icon artwork and the sidebar PNG icons: origin not yet confirmed by the owner (open item before public release). Project LICENSE not chosen yet.
 
@@ -479,3 +479,14 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 - New CI workflow (npm ci, typecheck, build on every PR and push to main/collab) and Dependabot (weekly npm, monthly GitHub Actions).
 - Release workflow: stops if the tag does not match package.json, uploads the .tar.gz, and uses docs/RELEASE_NOTES_<tag>.md as the release text.
 - Release notes: docs/RELEASE_NOTES_v0.3.0.md. Not yet built or tested as a release.
+
+## 1.0.0 (prepared)
+- Version set to 1.0.0 in package.json and package-lock.json; README status line updated. A major version (not 0.3.1 or 0.4.0) because this release is very different from the earlier ones (for example, the data folder changes name). Release notes: docs/RELEASE_NOTES_v1.0.0.md.
+- Data folder: APP_ID is now 'rancha' (was 'personal-library'). Nothing moves the old folder; the release notes explain the manual move for Windows and Linux.
+- Music: song details and covers read from the files' own tags (mp3/ID3, FLAC, Ogg Vorbis/Opus, MP4/M4A, WAV), cached in song-info.json; the database is not changed.
+- Music player: new Slider (click, drag, wheel, time bubble) for position and volume.
+- Seeking fix: Electron's net.fetch on file:// ignores Range (answers 200 with only the asked bytes, no Content-Range), so jumping in a song fell back to the start. src/main/fileRange.ts now answers 200/206/416 by hand for library-audio and library-video. Verified in a node test on a real file (whole, 100-199, 100-, -50, past the end); NOT verified in real Electron playback.
+- Queue: the play order (the folder) is hidden; the visible queue holds only songs added by hand ("Add to queue" in the right-click menu, also for a multi-selection). Queued songs play first, then the folder continues from where it was. In the queue: drag to reorder, double-click = play now, right-click = Play now / Move to top / Move to bottom / Remove / Clear. A queue button (with a count) shows or hides the queue in all players (setting musicShowQueue).
+- List view: clicking "Name" sorts A-Z / Z-A with an arrow; the Music section hides the Type, Tags and Added columns.
+- The small floating player follows the theme (it was always dark); Big Picture's music panel stays dark on purpose.
+- Verified: typecheck and build. NOT verified in the running app.

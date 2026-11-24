@@ -18,9 +18,11 @@ interface Props {
   y: number
   entries: MenuEntry[]
   onClose: () => void
+  /** Extra class, e.g. "over-player" for a menu that must sit above the floating music player. */
+  className?: string
 }
 
-export default function ContextMenu({ x, y, entries, onClose }: Props) {
+export default function ContextMenu({ x, y, entries, onClose, className = '' }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ x, y })
 
@@ -62,7 +64,7 @@ export default function ContextMenu({ x, y, entries, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="context-menu"
+      className={`context-menu ${className}`}
       role="menu"
       style={{ left: position.x, top: position.y }}
       onContextMenu={(event) => event.preventDefault()}

@@ -49,5 +49,6 @@ export const IPC = {
   onlineImages: 'online:images',
   onlineDownload: 'online:download',
   coverAuto: 'cover:auto',
-  coverSaveAuto: 'cover:saveAuto'
+  coverSaveAuto: 'cover:saveAuto',
+  songInfo: 'music:songInfo'
 } as const
