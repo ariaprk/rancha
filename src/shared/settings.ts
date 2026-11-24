@@ -11,6 +11,10 @@ export type GlassLevel = 'off' | 'normal' | 'strong'
 export type ReaderLayout = 'single' | 'double' | 'scroll' // one page, two pages side by side, or a long strip
 export type IconTone = 'accent' | 'white' | 'black' | 'colorful'
 export type ReaderFit = 'page' | 'width' // whole page visible, or fill the width
+export type MusicOverlay = 'hidden' | 'compact' | 'expanded' // the small player shown over everything
+export type MusicCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+export type VideoPlayerChoice = 'builtin' | 'external' // play videos inside the app, or in the default Windows player
+export type MusicRepeat = 'off' | 'all' | 'one'
 
 export interface Settings {
   theme: ThemeMode
@@ -33,6 +37,17 @@ export interface Settings {
   iconTone: IconTone // color of the sidebar and Big Picture icons
   steamGridDbKey: string // the user's own SteamGridDB API key (empty = online search off)
   tmdbKey: string // the user's own TMDB API key (movies and series)
+  musicVolume: number // 0-100
+  musicOverlay: MusicOverlay // hidden / small / expanded; only shown while a song is loaded
+  musicCorner: MusicCorner // where the small player sits
+  musicShuffle: boolean
+  musicRepeat: MusicRepeat
+  musicAutoplayNext: boolean // keep going with the next song when one ends
+  videoPlayer: VideoPlayerChoice
+  videoVolume: number // 0-100
+  videoSubSize: number // subtitle size in percent (100 = normal)
+  videoSubBox: boolean // dark box behind subtitles
+  videoAutoNext: boolean // continue with the next video of the folder when one ends
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -55,7 +70,18 @@ export const DEFAULT_SETTINGS: Settings = {
   iconTone: 'accent',
   emulators: [],
   steamGridDbKey: '',
-  tmdbKey: ''
+  tmdbKey: '',
+  musicVolume: 70,
+  musicOverlay: 'compact',
+  musicCorner: 'bottom-right',
+  musicShuffle: false,
+  musicRepeat: 'off',
+  musicAutoplayNext: true,
+  videoPlayer: 'builtin',
+  videoVolume: 100,
+  videoSubSize: 100,
+  videoSubBox: false,
+  videoAutoNext: true
 }
 
 export const CARD_SIZE_RANGE = { min: 110, max: 260 } as const
@@ -114,6 +140,17 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
         ? input.steamGridDbKey.trim()
         : base.steamGridDbKey,
     tmdbKey:
-      typeof input.tmdbKey === 'string' && TMDB_KEY_PATTERN.test(input.tmdbKey.trim()) ? input.tmdbKey.trim() : base.tmdbKey
+      typeof input.tmdbKey === 'string' && TMDB_KEY_PATTERN.test(input.tmdbKey.trim()) ? input.tmdbKey.trim() : base.tmdbKey,
+    musicVolume: number(input.musicVolume, 0, 100, base.musicVolume),
+    musicOverlay: pick(input.musicOverlay, ['hidden', 'compact', 'expanded'], base.musicOverlay),
+    musicCorner: pick(input.musicCorner, ['top-left', 'top-right', 'bottom-left', 'bottom-right'], base.musicCorner),
+    musicShuffle: bool(input.musicShuffle, base.musicShuffle),
+    musicRepeat: pick(input.musicRepeat, ['off', 'all', 'one'], base.musicRepeat),
+    musicAutoplayNext: bool(input.musicAutoplayNext, base.musicAutoplayNext),
+    videoPlayer: pick(input.videoPlayer, ['builtin', 'external'], base.videoPlayer),
+    videoVolume: number(input.videoVolume, 0, 100, base.videoVolume),
+    videoSubSize: number(input.videoSubSize, 50, 220, base.videoSubSize),
+    videoSubBox: bool(input.videoSubBox, base.videoSubBox),
+    videoAutoNext: bool(input.videoAutoNext, base.videoAutoNext)
   }
 }

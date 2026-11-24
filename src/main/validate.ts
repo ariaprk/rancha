@@ -12,7 +12,7 @@ import type {
   ScanOptions
 } from '../shared/types'
 
-const KINDS: readonly string[] = ['collection', 'launchable', 'video', 'readable']
+const KINDS: readonly string[] = ['collection', 'launchable', 'video', 'readable', 'audio']
 const MAX_NAME = 200
 const MAX_DESCRIPTION = 5000
 const MAX_TARGET = 2000
@@ -205,7 +205,7 @@ export function parseScanOptions(raw: unknown): ScanOptions {
     throw new Error('Invalid request.')
   }
   const content = raw.content
-  if (content !== 'games' && content !== 'roms' && content !== 'videos' && content !== 'comics' && content !== 'all') {
+  if (content !== 'games' && content !== 'roms' && content !== 'videos' && content !== 'comics' && content !== 'music' && content !== 'all') {
     throw new Error('Invalid request.')
   }
   return { subfolders: raw.subfolders, content, allPrograms: raw.allPrograms, gameFolders: raw.gameFolders === true }

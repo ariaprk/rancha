@@ -24,10 +24,12 @@ export function launchableExtensions(platform: NodeJS.Platform): string[] {
 const EXTENSIONS: Record<FileBackedKind, string[]> = {
   launchable: launchableExtensions(process.platform),
   video: ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg', 'm2ts', 'mts', 'ogv'],
-  readable: ['cbz', 'cbr', 'pdf']
+  readable: ['cbz', 'cbr', 'pdf'],
+  // Only formats the built-in player (Chromium) can decode.
+  audio: ['mp3', 'flac', 'ogg', 'oga', 'opus', 'wav', 'm4a', 'aac', 'weba']
 }
 
-const KIND_ORDER: FileBackedKind[] = ['launchable', 'video', 'readable']
+const KIND_ORDER: FileBackedKind[] = ['launchable', 'video', 'readable', 'audio']
 
 /** Guesses the item kind from a file's extension, or null if unsupported. */
 export function detectKind(path: string): FileBackedKind | null {
@@ -49,7 +51,8 @@ export function nameFromPath(path: string, isFolder = false): string {
 const KIND_FILTER_NAMES: Record<FileBackedKind, string> = {
   launchable: 'Programs and shortcuts',
   video: 'Video files',
-  readable: 'Comics, manga and PDF'
+  readable: 'Comics, manga and PDF',
+  audio: 'Music files'
 }
 
 /** Linux file dialogs match extensions case-sensitively, so "AppImage" is listed as it is usually written. */

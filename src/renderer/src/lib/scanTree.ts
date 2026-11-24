@@ -97,6 +97,7 @@ export function defaultsFor(content: ScanContent): { layout: ImportLayout; wrap:
       return { layout: 'tree', wrap: true } // one collection per console folder, inside one new collection
     case 'videos':
     case 'comics':
+    case 'music':
       return { layout: 'tree', wrap: true } // anime/manga: keep the structure, inside one collection
     default:
       return { layout: 'tree', wrap: false }

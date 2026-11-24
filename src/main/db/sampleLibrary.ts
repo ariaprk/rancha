@@ -37,6 +37,7 @@ export const SAMPLE_ITEMS: LibraryItem[] = [
   make('reading', null, 'collection', 'Reading', 20),
   make('video', null, 'collection', 'Video', 200),
   make('apps', null, 'collection', 'Applications', 150),
+  make('music', null, 'collection', 'Music', 120),
 
   // ---- Games ----
   make('games-rpg', 'games', 'collection', 'RPG', 280),

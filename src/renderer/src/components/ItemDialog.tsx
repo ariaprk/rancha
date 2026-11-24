@@ -31,7 +31,8 @@ const CREATE_TITLES: Record<ItemKind, string> = {
   collection: 'New collection',
   launchable: 'Add an app or game',
   video: 'Add a video',
-  readable: 'Add a comic, manga or PDF'
+  readable: 'Add a comic, manga or PDF',
+  audio: 'Add a music file'
 }
 
 const ON_WINDOWS = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
@@ -41,13 +42,15 @@ const TARGET_PLACEHOLDERS: Record<ItemKind, string> = ON_WINDOWS
       collection: '',
       launchable: 'C:\\Games\\MyGame\\game.exe',
       video: 'C:\\Videos\\episode01.mkv',
-      readable: 'C:\\Comics\\volume1.cbz  (or a folder of images)'
+      readable: 'C:\\Comics\\volume1.cbz  (or a folder of images)',
+      audio: 'C:\\Music\\song.mp3'
     }
   : {
       collection: '',
       launchable: '/home/you/Games/MyGame/start.sh',
       video: '/home/you/Videos/episode01.mkv',
-      readable: '/home/you/Comics/volume1.cbz  (or a folder of images)'
+      readable: '/home/you/Comics/volume1.cbz  (or a folder of images)',
+      audio: '/home/you/Music/song.mp3'
     }
 
 function splitTags(text: string): string[] {

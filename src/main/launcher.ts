@@ -17,6 +17,8 @@ export interface LauncherDeps {
   openReadable: (item: LibraryItem) => Promise<ReaderSession | null>
   /** Runs a ROM with its emulator. '' = started, otherwise an error text. */
   runWithEmulator: (item: LibraryItem) => Promise<string>
+  /** Should videos play in the built-in player? (Settings; absent = no, use the default Windows player.) */
+  playVideosInside?: () => boolean
 }
 
 /** Does this item point at a file or folder at all? (Collections do not.) */
@@ -27,7 +29,8 @@ export function hasLocation(item: LibraryItem): boolean {
 export async function openLibraryItem(
   item: LibraryItem | null,
   deps: LauncherDeps,
-  markOpened: (id: string) => number
+  markOpened: (id: string) => number,
+  options: { external?: boolean } = {}
 ): Promise<OpenResult> {
   if (!item) throw new Error('This item no longer exists.')
   if (item.kind === 'collection') throw new Error('Collections are opened in the library, not launched.')
@@ -44,6 +47,11 @@ export async function openLibraryItem(
     } catch (error) {
       return { status: 'failed', message: error instanceof Error ? error.message : String(error) }
     }
+  }
+
+  // Videos play in the built-in player unless the user chose the Windows player (or asked for it just now).
+  if (item.kind === 'video' && options.external !== true && deps.playVideosInside?.() === true) {
+    return { status: 'video', id: item.id, openedAt: markOpened(item.id) }
   }
 
   let problem: string

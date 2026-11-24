@@ -40,5 +40,6 @@ export const SECTION_TONES: Record<string, AccentPreset> = {
   games: ACCENT_PRESETS[1],
   reading: ACCENT_PRESETS[0],
   video: ACCENT_PRESETS[2],
-  apps: ACCENT_PRESETS[5]
+  apps: ACCENT_PRESETS[5],
+  music: ACCENT_PRESETS[1]
 }

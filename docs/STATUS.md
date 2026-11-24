@@ -431,3 +431,42 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 
 ## 9z26 - online thumbnails of the new databases did not show
 - Cause: the page's security policy (img-src in index.html) only allowed thumbnails from steamgriddb.com, so pictures from AniList / TMDB / TVmaze were blocked (broken-image icon), although downloading worked (it goes through the main process). Fix: image.tmdb.org, *.anilist.co and *.tvmaze.com added to img-src. Not verified in real Electron (the sandbox cannot run it).
+
+## 9z28 - music player (5th section "Music")
+- New kind of item "audio" (mp3, flac, ogg/oga/opus, wav, m4a, aac, weba - only what the built-in player can decode). **Database schema 10 -> 11** (the allowed-kinds rule of the items table is extended by rebuilding the table; tags, reading progress and covers are kept; a backup is made automatically as for every upgrade). A "Music" section is added to existing libraries.
+- Add > "Music file…", "Add several files", "Add a whole folder > Music" (folders = albums are kept). Double-click plays; the songs of the same folder become the queue.
+- Player engine (state/usePlayer.ts + shared/playerQueue.ts): play/pause, previous (restarts after 3 s), next, seek, volume, shuffle, repeat off/all/one, continue with next song, skips a broken file, system media keys (Media Session). Streams through a private address library-audio://item/<id> (only audio items of the library, Range supported).
+- Overlay (components/MiniPlayer.tsx): hidden / small / expanded, 4 corners, floats over the library, comic reader and game page, only while a song is loaded. Small: title, play/pause, next, enlarge, hide. Expanded: seek bar, controls, volume, queue.
+- Music page: the Music section shows a "now playing" panel with the queue above the normal list.
+- Big Picture: music button at the top right (or key M) opens a panel with controls and the settings (overlay mode, corner, continue-next); if the overlay was hidden the button brings it back.
+- New settings (settings.json): musicVolume, musicOverlay, musicCorner, musicShuffle, musicRepeat, musicAutoplayNext.
+- Limits: the overlay lives INSIDE the app window, so it cannot float over an external game or emulator (a separate always-on-top window would be a later step). No cover art/tags from files yet (title = file name). Gamepad buttons do not control the player yet.
+- Verified only in node tests (check-music-db: upgrade from a real v10 database, data kept, bad kinds refused, cascade ok; check-player: queue rules + settings; check-music-scan) and in the test browser (a real WAV through the player: play/pause/next/previous/shuffle/overlay states/Big Picture panel). NOT verified in real Electron: the library-audio protocol, codecs, real files.
+
+## 9z29 - music overlay look
+- The overlay had dark text on a dark panel in light themes (unreadable): it now always uses its own light-on-dark colours.
+- Small state is now only a note icon, a green dot while playing, the song name and one enlarge button (no play/next/hide). Hide (✕) is in the expanded state; Big Picture's music button / Music page checkbox bring it back.
+- Verified only in the test browser (screenshots, light theme).
+
+## 9z30 - Big Picture footer, one music indicator, overlay in full-screen reader
+- Big Picture footer: only Open / Back-or-Exit / Favorite, plain (no colours), bottom left. Removed: Category hint, mouse tip, Exit Big Picture / Favorite buttons, "Controller connected" note.
+- Big Picture showed two music displays (the overlay and the top-right button): now the overlay is not drawn in Big Picture; the music button shows "● song name" and opens the panel.
+- Manga reader: full screen uses the browser's real full screen, which shows only the reader element, so the overlay never appeared there. The overlay is now rendered INSIDE the reader (and not twice).
+- Verified only in the test browser: Big Picture (screenshot, element counts), reader with the overlay inside it and the fullscreen element being the reader. Real Electron full screen not verified.
+
+## 9z31 - scrolling song names (marquee)
+- components/Marquee.tsx: a song name too long for its box slides left to the end, pauses, and restarts; short names stay still; the tooltip shows the full name. Used in the overlay (small and expanded), the Big Picture music button and the Music page header. With animations "off" in Settings it falls back to "…".
+- Verified only in the test browser (long name moves, short name does not).
+
+## 9z32 - marquee always on
+- Long song names slide even when animations are "off" (Settings) or Windows "reduce motion" is on (override with higher specificity). Verified only in the test browser (data-motion=off: the name still moves).
+
+## 9z33 - built-in video player (stage 1: Chromium engine)
+- Videos now play INSIDE the app (full window / full screen, themed with the app's dark/light/airy theme and accent colour). Settings > "Video and music" can switch back to the Windows player. Item context "open" and Big Picture use the same path; `library.open(id, external)` forces the Windows player.
+- Controls: play/pause, seek bar (buffered, hover time, drag), ±10 s, volume (wheel), mute, speed 0.5–2×, full screen (F / double-click), auto-hiding bars; keys: Space/K, ←/→ (Shift = 30 s), J/L, ↑/↓, M, F, C, Z/X (subtitle delay), [ ], N/P, Home, Esc.
+- Playlist: next/previous video of the same folder (natural order, 2 before 10); when a video ends the next one starts (setting). Reaching 90% marks it as watched. The music overlay is shown inside the player; starting a video pauses music.
+- Subtitles: .srt, .vtt, .ass/.ssa next to the video (same name start, or in Subs/Subtitles folders) are found automatically (first one on by default); encodings UTF-8/UTF-16/Windows-1256 (Persian/Arabic)/1252 are detected; "Add a subtitle file…"; size, delay, optional dark box; Persian/Arabic text is shown right-to-left; <i>/<b>/<u> supported; ASS styling is reduced to plain text (no colours/positions).
+- Resume position: remembered per video in the app's browser storage (localStorage inside the data folder; NOT part of backups); cleared near the end.
+- When a file cannot be played the player says so (error, picture-less, or no decoded sound after 4 s) and offers "Open with the Windows player".
+- LIMITS of this stage: only what Electron's Chromium can decode. Embedded subtitle tracks and multiple audio tracks inside MKV are NOT available; HEVC/H.265 depends on the PC, AC3/DTS audio, AVI/WMV and some other formats may fail. Stage 2 (ffmpeg engine: re-wrap/convert on the fly, embedded subtitles, audio-track choice) is the plan for "all formats"; it adds an ffmpeg program (~70–80 MB) to the app.
+- Verified only in node tests (check-subs: SRT/VTT/ASS parsing, cue lookup, labels; check-subfiles: finding files, encodings, launcher routing builtin/external) and in the test browser with a real WebM + generated subtitles (play, seek, volume, speed, subtitle switch/delay/add, next/previous, auto-next, resume, themes dark/light). NOT verified in real Electron: the library-video protocol with real files, real codecs, real full screen, the Persian code-page detection with real files.

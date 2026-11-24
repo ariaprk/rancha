@@ -39,6 +39,7 @@ export const CONTENT_CHOICES: { value: ScanContent; label: string; hint: string 
   { value: 'roms', label: 'Console games (ROMs)', hint: 'Nintendo, PlayStation…: runs with RetroArch or another emulator' },
   { value: 'videos', label: 'Videos, anime, series', hint: 'Video files, with folders and seasons kept' },
   { value: 'comics', label: 'Comics, manga, books', hint: '.cbz, .cbr, PDF and folders of pictures' },
+  { value: 'music', label: 'Music', hint: 'mp3, flac, ogg, wav, m4a… with folders (albums) kept' },
   { value: 'all', label: 'A mix of everything', hint: 'Show every kind of file that can be added' }
 ]
 

@@ -9,6 +9,7 @@ export type ItemKind =
   | 'launchable' // an app or game that gets launched
   | 'video' // opened in the default Windows video app
   | 'readable' // opened in the built-in comic/manga reader
+  | 'audio' // a music file, played by the built-in music player
 
 export interface LibraryItem {
   id: string
@@ -97,7 +98,7 @@ export interface FolderScan {
 }
 
 /** What the user says the folder contains; decides what the scan looks for. */
-export type ScanContent = 'games' | 'roms' | 'videos' | 'comics' | 'all'
+export type ScanContent = 'games' | 'roms' | 'videos' | 'comics' | 'music' | 'all'
 
 export interface ScanOptions {
   subfolders: boolean // look inside sub-folders too
@@ -144,8 +145,16 @@ export type OpenResult =
   | { status: 'missing'; path: string } // the file or folder is gone
   | { status: 'no-target' } // the item has no location set yet
   | { status: 'reader'; session: ReaderSession } // a comic: show it in the built-in reader
+  | { status: 'video'; id: string; openedAt: number } // a video: play it in the built-in player
   | { status: 'chapters'; id: string } // a comic made of several chapters: it became a collection, one item per chapter
   | { status: 'failed'; message: string } // Windows refused to open it
+
+/** A subtitle file found next to a video (or picked by the user): its text is read here and shown by the player. */
+export interface SubtitleFile {
+  name: string // file name
+  label: string // friendly name for the menu ("English", "Persian"...)
+  text: string // decoded text
+}
 
 // The built-in comic reader.
 export type ReadingDirection = 'ltr' | 'rtl' // left-to-right (comics) or right-to-left (manga)

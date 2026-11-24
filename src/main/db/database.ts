@@ -18,7 +18,7 @@ const { DatabaseSync: Database } = require('node:sqlite') as typeof import('node
 // (`PRAGMA user_version`). When we later need a new column, we ADD a new
 // migration at the end and never edit old ones, so every existing library
 // upgrades safely.
-const MIGRATIONS: Array<(db: DatabaseSync) => void> = [
+export const MIGRATIONS: Array<(db: DatabaseSync) => void> = [
   // Version 1: the first schema, plus the sample library (first run only).
   (db) => {
     db.exec(`
@@ -118,6 +118,24 @@ const MIGRATIONS: Array<(db: DatabaseSync) => void> = [
       const cut = row.target.lastIndexOf('|')
       update.run(`${row.target.slice(0, cut)}\u001f${row.target.slice(cut + 1)}`, row.id)
     }
+  },
+  // Version 11: a new kind of item, 'audio' (music files). The "kind" column has a rule that
+  // lists the allowed kinds, and SQLite cannot change a rule in place, so the items table is
+  // rebuilt with the extended rule and every row is copied over unchanged. (The upgrade runs with
+  // foreign-key enforcement switched off, as SQLite's documentation requires for this, so that
+  // dropping the old table does not delete the tags and reading progress that point to it.)
+  (db) => {
+    const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'items'").get() as unknown as { sql: string }
+    const extended = row.sql
+      .replace(/^CREATE TABLE\s+"?items"?/i, 'CREATE TABLE items_new')
+      .replace("'video','readable')", "'video','readable','audio')")
+    if (extended === row.sql || !extended.includes("'readable','audio'")) throw new Error('Could not extend the items table.')
+    db.exec(extended)
+    db.exec('INSERT INTO items_new SELECT * FROM items')
+    db.exec('DROP TABLE items')
+    db.exec('ALTER TABLE items_new RENAME TO items')
+    db.exec('CREATE INDEX idx_items_parent ON items(parent_id)')
+    db.exec('CREATE INDEX idx_items_parent_order ON items(parent_id, sort_order)')
   }
 ]
 
@@ -162,15 +180,21 @@ function migrate(db: DatabaseSync, filePath: string): void {
   }
 
   for (let version = current; version < MIGRATIONS.length; version++) {
+    // Foreign keys are off while a step rebuilds a table (see version 11), and checked afterwards.
+    db.exec('PRAGMA foreign_keys = OFF')
     // A "transaction": either every step of the upgrade happens, or none does.
     db.exec('BEGIN')
     try {
       MIGRATIONS[version](db)
+      const broken = db.prepare('PRAGMA foreign_key_check').all()
+      if (broken.length > 0) throw new Error('The upgrade left broken links between items.')
       db.exec(`PRAGMA user_version = ${version + 1}`)
       db.exec('COMMIT')
     } catch (error) {
       db.exec('ROLLBACK')
       throw error
+    } finally {
+      db.exec('PRAGMA foreign_keys = ON')
     }
   }
 }

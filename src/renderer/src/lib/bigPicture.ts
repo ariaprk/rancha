@@ -64,6 +64,8 @@ export function kindLabel(item: LibraryItem, childCount = 0): string {
       return 'Video'
     case 'readable':
       return 'Reading'
+    case 'audio':
+      return 'Music'
   }
 }
 

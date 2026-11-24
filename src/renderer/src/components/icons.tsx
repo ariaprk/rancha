@@ -166,6 +166,8 @@ export function KindIcon({ kind, size }: { kind: ItemKind; size?: number }) {
       return <FilmIcon size={size} />
     case 'readable':
       return <BookIcon size={size} />
+    case 'audio':
+      return <NoteIcon size={size} />
   }
 }
 
@@ -173,8 +175,17 @@ export const KIND_LABEL: Record<ItemKind, string> = {
   collection: 'Collection',
   launchable: 'App / Game',
   video: 'Video',
-  readable: 'Reading'
+  readable: 'Reading',
+  audio: 'Music'
 }
+
+export const NoteIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9 18V6l10-2v12" />
+    <circle cx="6.5" cy="18" r="2.5" />
+    <circle cx="16.5" cy="16" r="2.5" />
+  </Svg>
+)
 
 export const PlusIcon = (p: IconProps) => (
   <Svg {...p}>

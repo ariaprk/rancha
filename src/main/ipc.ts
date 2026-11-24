@@ -17,6 +17,7 @@ import { basename, join } from 'node:path'
 import { IPC } from '../shared/ipc'
 import { joinChapterTarget, splitChapterTarget } from '../shared/chapterTarget'
 import type {
+  SubtitleFile,
   AppInfo,
   AutoCoverResult,
   BackupInfo,
@@ -39,6 +40,8 @@ import type { AutoCovers } from './autoCovers'
 import type { CoverStore } from './covers'
 import type { ItemRepository } from './db/itemRepository'
 import type { SettingsStore } from './settingsStore'
+import { findSubtitles, readSubtitleFile } from './subtitleFiles'
+import { SUBTITLE_EXTENSIONS } from '../shared/subtitles'
 import { findMissing, openLibraryItem, type LauncherDeps } from './launcher'
 import { spawn } from 'node:child_process'
 import { buildLaunch, resolveEntry, coresFolders, installedCores, isBareCommand, LaunchError, suggestCores } from './emulatorLaunch'
@@ -187,7 +190,8 @@ export function registerIpc({
   const launcherDeps: LauncherDeps = {
     ...baseLauncherDeps,
     openReadable: (item) => readerService.open(item),
-    runWithEmulator: (item) => runWithEmulator(item, settings.get().emulators)
+    runWithEmulator: (item) => runWithEmulator(item, settings.get().emulators),
+    playVideosInside: () => settings.get().videoPlayer === 'builtin'
   }
 
   ipcMain.handle(
@@ -331,10 +335,10 @@ export function registerIpc({
   // Opens an item. The interface only sends the item's id; the location is
   // read from the database here, so the page can never ask us to run an
   // arbitrary file.
-  ipcMain.handle(IPC.libraryOpen, async (_event, id: unknown): Promise<OpenResult> => {
+  ipcMain.handle(IPC.libraryOpen, async (_event, id: unknown, external?: unknown): Promise<OpenResult> => {
     const repository = getRepository()
     const item = repository.getItem(parseId(id))
-    const result = await openLibraryItem(item, launcherDeps, (itemId) => repository.markOpened(itemId))
+    const result = await openLibraryItem(item, launcherDeps, (itemId) => repository.markOpened(itemId), { external: external === true })
     // A comic made of several chapter folders is not one long book: it becomes a collection with
     // one item per chapter (so chapters behave like everything else in the library).
     const chapters = result.status === 'reader' ? result.session.chapters : undefined
@@ -418,6 +422,21 @@ export function registerIpc({
     if (!location || !(await launcherDeps.exists(location))) return false
     shell.showItemInFolder(location)
     return true
+  })
+
+  // Subtitles next to a video (found by the item's id: the page never names a file), and one picked by hand.
+  ipcMain.handle(IPC.videoSubtitles, async (_event, id: unknown): Promise<SubtitleFile[]> => {
+    const item = getRepository().getItem(parseId(id))
+    if (!item || item.kind !== 'video' || !item.target) return []
+    return findSubtitles(item.target)
+  })
+  ipcMain.handle(IPC.videoPickSubtitle, async (event): Promise<SubtitleFile | null> => {
+    const paths = await openDialog(event, {
+      title: 'Choose a subtitle file',
+      properties: ['openFile'],
+      filters: [{ name: 'Subtitles', extensions: [...SUBTITLE_EXTENSIONS] }]
+    })
+    return paths.length === 0 ? null : readSubtitleFile(paths[0])
   })
 
   // Which items point at files or folders that no longer exist?

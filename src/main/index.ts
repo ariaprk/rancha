@@ -9,6 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { COVER_SCHEME } from '../shared/cover'
 import { READER_SCHEME } from '../shared/reader'
 import { VIDEO_SCHEME } from '../shared/video'
+import { AUDIO_SCHEME } from '../shared/audio'
 import { splitChapterTarget } from '../shared/chapterTarget'
 import { IPC } from '../shared/ipc'
 import type { CoverPreview } from '../shared/types'
@@ -36,7 +37,8 @@ app.setPath('userData', join(app.getPath('appData'), APP_ID))
 protocol.registerSchemesAsPrivileged([
   { scheme: COVER_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
   { scheme: READER_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
-  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
+  { scheme: VIDEO_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
+  { scheme: AUDIO_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
 ])
 
 let repository: ItemRepository | null = null
@@ -260,6 +262,21 @@ app.whenReady().then(() => {
       return new Response(file.body, { status: file.status, statusText: file.statusText, headers: answer })
     } catch {
       return new Response('Could not read this video', { status: 500 })
+    }
+  })
+
+  // Serve a library music file to the player: library-audio://item/<item id> (range requests allowed, so seeking works).
+  protocol.handle(AUDIO_SCHEME, async (request) => {
+    try {
+      const id = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ''))
+      const item = repository?.getItem(id)
+      if (!item || item.kind !== 'audio' || !item.target) return new Response('Not found', { status: 404 })
+      const headers: Record<string, string> = {}
+      const range = request.headers.get('range')
+      if (range) headers.range = range
+      return await net.fetch(pathToFileURL(item.target).toString(), { headers })
+    } catch {
+      return new Response('Could not read this song', { status: 500 })
     }
   })
 

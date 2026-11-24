@@ -135,7 +135,7 @@ export function runQuery(input: QueryInput): QueryResult[] {
   return results
 }
 
-const KIND_ORDER: Record<ItemKind, number> = { collection: 0, launchable: 1, video: 2, readable: 3 }
+const KIND_ORDER: Record<ItemKind, number> = { collection: 0, launchable: 1, video: 2, readable: 3, audio: 4 }
 
 const byName = (a: LibraryItem, b: LibraryItem) =>
   a.name.localeCompare(b.name, undefined, { numeric: true })

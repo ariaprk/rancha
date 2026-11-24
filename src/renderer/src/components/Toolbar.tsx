@@ -55,6 +55,7 @@ export default function Toolbar(props: Props) {
     { label: 'Console game (ROM)…', onSelect: () => props.onAdd({ type: 'create', kind: 'launchable', rom: true }) },
     { label: 'Video…', onSelect: () => props.onAdd({ type: 'create', kind: 'video' }) },
     { label: 'Comic, manga or PDF…', onSelect: () => props.onAdd({ type: 'create', kind: 'readable' }) },
+    { label: 'Music file…', onSelect: () => props.onAdd({ type: 'create', kind: 'audio' }) },
     { label: '', separator: true, onSelect: () => undefined },
     { label: 'Add several files at once…', onSelect: () => props.onAdd({ type: 'files' }) },
     { label: 'Add a whole folder…', onSelect: () => props.onAdd({ type: 'folder' }) }

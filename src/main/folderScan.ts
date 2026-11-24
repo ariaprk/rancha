@@ -26,11 +26,12 @@ interface State {
   truncated: boolean
 }
 
-const ALLOWED: Record<'roms' | 'videos' | 'comics' | 'all', ReadonlySet<ItemKind>> = {
+const ALLOWED: Record<'roms' | 'videos' | 'comics' | 'music' | 'all', ReadonlySet<ItemKind>> = {
   roms: new Set<ItemKind>(['launchable']),
   videos: new Set<ItemKind>(['video']),
   comics: new Set<ItemKind>(['readable']),
-  all: new Set<ItemKind>(['launchable', 'video', 'readable'])
+  music: new Set<ItemKind>(['audio']),
+  all: new Set<ItemKind>(['launchable', 'video', 'readable', 'audio'])
 }
 
 interface DirResult {

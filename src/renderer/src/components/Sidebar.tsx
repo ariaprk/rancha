@@ -37,7 +37,8 @@ const SECTION_ICONS: Record<string, ReactNode> = {
   games: <MaskIcon name="video-game" section="games" />,
   reading: <MaskIcon name="book" section="reading" />,
   video: <MaskIcon name="play" section="video" />,
-  apps: <MaskIcon name="apps" section="apps" />
+  apps: <MaskIcon name="apps" section="apps" />,
+  music: <MaskIcon name="music" section="music" />
 }
 
 export default function Sidebar({

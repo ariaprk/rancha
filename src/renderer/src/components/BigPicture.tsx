@@ -15,13 +15,16 @@ import { playSound } from '../lib/sound'
 import { wheelSteps } from '../lib/wheelMath'
 import Cover from './Cover'
 import MaskIcon, { SECTION_MASKS } from './MaskIcon'
-import { ClockIcon, FolderIcon, HomeIcon, StarIcon } from './icons'
+import { ClockIcon, FolderIcon, HomeIcon, NoteIcon, StarIcon } from './icons'
+import Marquee from './Marquee'
+import BpMusicPanel, { type BpMusic } from './BpMusicPanel'
 
 interface Props {
   items: readonly LibraryItem[]
   onOpen: (item: LibraryItem) => void
   onToggleFavorite: (id: string, value: boolean) => void
   onExit: () => void
+  music: BpMusic
 }
 
 const VISIBLE_BEFORE = 1
@@ -57,7 +60,8 @@ function overlayOpen(): boolean {
   return document.querySelector('.modal-backdrop, .reader, .game-screen') !== null
 }
 
-export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: Props) {
+export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, music }: Props) {
+  const [musicOpen, setMusicOpen] = useState(false)
   const categories = useMemo(() => buildCategories(items), [items])
   const [catIndex, setCatIndex] = useState(() => Math.min(2, categories.length - 1)) // start on the first collection
   const [paths, setPaths] = useState<Record<string, string[]>>({}) // folders opened inside each category
@@ -183,6 +187,12 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
     function onKeyDown(event: KeyboardEvent) {
       if (overlayOpen() || event.ctrlKey || event.metaKey || event.altKey) return
       if ((event.target as HTMLElement | null)?.closest?.('input, textarea, select')) return
+      if (event.key === 'm' || event.key === 'M') {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        setMusicOpen((open) => !open)
+        return
+      }
       const action = keyActions[event.key]
       if (!action) return
       event.preventDefault()
@@ -348,7 +358,22 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
           <span className="bp-time">{time}</span>
           <span className="bp-date">{date}</span>
         </div>
+        <button
+          type="button"
+          className={`bp-music-btn ${musicOpen || (music.player.current !== null && music.settings.musicOverlay !== 'hidden') ? 'on' : ''}`}
+          title="Music (M)"
+          aria-label="Music"
+          onClick={() => {
+            // Hidden player: bring it back. Otherwise open the music panel.
+            if (music.player.current !== null && music.settings.musicOverlay === 'hidden') music.onChange({ musicOverlay: 'compact' })
+            setMusicOpen((open) => !open)
+          }}
+        >
+          <NoteIcon size={22} />
+          {music.player.current && <Marquee className="bp-music-now" text={`${music.player.playing ? '● ' : ''}${music.player.current.name}`} />}
+        </button>
       </header>
+      {musicOpen && <BpMusicPanel music={music} onClose={() => setMusicOpen(false)} />}
 
       <div className="bp-cats" role="tablist">
         {categories.map((cat, i) => {
@@ -418,42 +443,21 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit }: 
       )}
 
       <footer className="bp-hints">
-        <Hint pad="A" key1="Enter" device={device} label={focused?.kind === 'collection' ? 'Open folder' : desktopRow ? 'Leave' : 'Open'} color="green" />
-        <Hint pad="B" key1="Esc" device={device} label={path.length > 0 ? 'Back' : device === 'pad' ? '' : 'Exit'} color="red" />
-        {focused && focused.kind !== 'collection' && <Hint pad="X" key1="F" device={device} label={focused.isFavorite ? 'Unfavorite' : 'Favorite'} color="blue" />}
-        <Hint pad="LB RB" key1="← →" device={device} label="Category" color="plain" />
-        {device === 'pad' && <Hint pad="Start" key1="" device={device} label="Exit" color="plain" />}
-        {path.length > 0 && (
-          <button type="button" tabIndex={-1} className="bp-exit" onClick={() => act('back', false)}>
-            ‹ Back
-          </button>
-        )}
-        {focused && focused.kind !== 'collection' && device !== 'pad' && (
-          <button type="button" tabIndex={-1} className="bp-exit" onClick={() => callbacks.current.onToggleFavorite(focused.id, !focused.isFavorite)}>
-            {focused.isFavorite ? '★ Unfavorite' : '☆ Favorite'}
-          </button>
-        )}
-        {device !== 'pad' && (
-          <span className="bp-mouse-tip">Mouse: wheel scrolls · Shift+wheel changes category · click opens · right-click on empty space goes back</span>
-        )}
-        {device !== 'pad' && (
-          <button type="button" tabIndex={-1} className="bp-exit" onClick={() => callbacks.current.onExit()}>
-            Exit Big Picture
-          </button>
-        )}
-        {padConnected && device !== 'pad' && <span className="bp-pad-note">Controller connected</span>}
+        <Hint pad="A" key1="Enter" device={device} label={focused?.kind === 'collection' ? 'Open folder' : desktopRow ? 'Leave' : 'Open'} />
+        <Hint pad="B" key1="Esc" device={device} label={path.length > 0 ? 'Back' : device === 'pad' ? '' : 'Exit'} />
+        {focused && focused.kind !== 'collection' && <Hint pad="X" key1="F" device={device} label={focused.isFavorite ? 'Unfavorite' : 'Favorite'} />}
       </footer>
     </div>
   )
 }
 
-function Hint({ pad, key1, device, label, color }: { pad: string; key1: string; device: 'pad' | 'key'; label: string; color: 'green' | 'red' | 'blue' | 'plain' }) {
+function Hint({ pad, key1, device, label }: { pad: string; key1: string; device: 'pad' | 'key'; label: string }) {
   if (!label) return null
   const glyph = device === 'pad' ? pad : key1
   if (!glyph) return null
   return (
     <span className="bp-hint">
-      <span className={`bp-glyph ${device === 'pad' && pad.length === 1 ? 'round' : ''} ${color}`}>{glyph}</span>
+      <span className={`bp-glyph ${device === 'pad' && pad.length === 1 ? 'round' : ''}`}>{glyph}</span>
       <span className="bp-hint-label">{label}</span>
     </span>
   )

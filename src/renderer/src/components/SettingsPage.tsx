@@ -6,6 +6,9 @@ import {
   type GlassLevel,
   type IconTone,
   type ReaderFit,
+  type VideoPlayerChoice,
+  type MusicOverlay,
+  type MusicCorner,
   type ReaderLayout
 } from '../../../shared/settings'
 import type { AppInfo, MotionLevel, ReadingDirection, ThemeMode } from '../../../shared/types'
@@ -22,11 +25,12 @@ interface Props {
 }
 
 
-type Tab = 'appearance' | 'interface' | 'reading' | 'emulators' | 'online' | 'data' | 'about'
+type Tab = 'appearance' | 'interface' | 'reading' | 'media' | 'emulators' | 'online' | 'data' | 'about'
 const TABS: { value: Tab; label: string }[] = [
   { value: 'appearance', label: 'Appearance' },
   { value: 'interface', label: 'Size and motion' },
   { value: 'reading', label: 'Comic reader' },
+  { value: 'media', label: 'Video and music' },
   { value: 'emulators', label: 'Emulators' },
   { value: 'online', label: 'Online covers' },
   { value: 'data', label: 'Backup' },
@@ -323,6 +327,87 @@ export default function SettingsPage({ settings, appInfo, onChange, onReset }: P
               />
             </div>
             </section>
+            </>
+          )}
+
+          {tab === 'media' && (
+            <>
+              <section className="panel">
+                <h2>Video</h2>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Play videos in</div>
+                    <div className="muted small">The built-in player has subtitles and remembers where you stopped. If a file does not play there, the player offers the Windows player.</div>
+                  </div>
+                  <Segmented<VideoPlayerChoice>
+                    value={settings.videoPlayer}
+                    options={[
+                      { value: 'builtin', label: 'Built-in player' },
+                      { value: 'external', label: 'Windows player' }
+                    ]}
+                    onChange={(videoPlayer) => onChange({ videoPlayer })}
+                  />
+                </div>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Continue with the next video</div>
+                    <div className="muted small">When a video ends, play the next one of the same folder (next episode).</div>
+                  </div>
+                  <input type="checkbox" checked={settings.videoAutoNext} onChange={(event) => onChange({ videoAutoNext: event.target.checked })} />
+                </div>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Subtitle size ({settings.videoSubSize}%)</div>
+                    <div className="muted small">Also changeable inside the player (CC button).</div>
+                  </div>
+                  <input type="range" min={50} max={220} step={10} value={settings.videoSubSize} onChange={(event) => onChange({ videoSubSize: Number(event.target.value) })} />
+                </div>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Dark box behind subtitles</div>
+                  </div>
+                  <input type="checkbox" checked={settings.videoSubBox} onChange={(event) => onChange({ videoSubBox: event.target.checked })} />
+                </div>
+              </section>
+              <section className="panel">
+                <h2>Music</h2>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Small player over other screens</div>
+                    <div className="muted small">Shown while a song is loaded. Also changeable from the player itself and from Big Picture.</div>
+                  </div>
+                  <Segmented<MusicOverlay>
+                    value={settings.musicOverlay}
+                    options={[
+                      { value: 'compact', label: 'Small' },
+                      { value: 'expanded', label: 'Expanded' },
+                      { value: 'hidden', label: 'Hidden' }
+                    ]}
+                    onChange={(musicOverlay) => onChange({ musicOverlay })}
+                  />
+                </div>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Where it sits</div>
+                  </div>
+                  <Segmented<MusicCorner>
+                    value={settings.musicCorner}
+                    options={[
+                      { value: 'top-left', label: '↖' },
+                      { value: 'top-right', label: '↗' },
+                      { value: 'bottom-left', label: '↙' },
+                      { value: 'bottom-right', label: '↘' }
+                    ]}
+                    onChange={(musicCorner) => onChange({ musicCorner })}
+                  />
+                </div>
+                <div className="setting-row">
+                  <div>
+                    <div className="setting-name">Continue with the next song</div>
+                  </div>
+                  <input type="checkbox" checked={settings.musicAutoplayNext} onChange={(event) => onChange({ musicAutoplayNext: event.target.checked })} />
+                </div>
+              </section>
             </>
           )}
 

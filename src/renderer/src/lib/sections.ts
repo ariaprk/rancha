@@ -1,7 +1,7 @@
 // Games and apps are told apart by WHERE they are in the library: everything
 // inside the top-level "Applications" section is an app (it launches at once);
 // every other app/game is a game (it opens the full-screen game page). The
-// four top-level sections are Games, Video, Reading and Applications.
+// five top-level sections are Games, Video, Reading, Applications and Music.
 import type { LibraryItem } from '../../../shared/types'
 
 type Lookup = ReadonlyMap<string, LibraryItem>

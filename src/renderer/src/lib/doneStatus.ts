@@ -9,6 +9,8 @@ export function doneWord(kind: ItemKind): string {
       return 'Watched'
     case 'readable':
       return 'Read'
+    case 'audio':
+      return 'Listened'
     case 'launchable':
       return 'Completed'
     default:

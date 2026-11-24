@@ -4,7 +4,7 @@
 // stopped. Comic pages come from the backend through the private
 // library-page:// address; PDF pages are drawn by the interface (pdf.js) from
 // chunks the backend hands over. The interface never sees the real file.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import type { ReaderFit, ReaderLayout } from '../../../shared/settings'
 import type { LibraryItem, ReaderSession, ReadingDirection } from '../../../shared/types'
 import { useBook } from '../lib/useBook'
@@ -30,6 +30,7 @@ interface Props {
   onLayoutChange: (layout: ReaderLayout) => void
   onFitChange: (fit: ReaderFit) => void
   onClose: () => void
+  overlay?: ReactNode // the music player: must live inside the reader, because full screen shows only this element
 }
 
 const SAVE_DELAY_MS = 600
@@ -100,7 +101,8 @@ function ReaderBody({
   fit,
   onLayoutChange,
   onFitChange,
-  onClose
+  onClose,
+  overlay
 }: Props & { provider: PageProvider }) {
   const count = provider.count
   const [page, setPage] = useState(() => clampPage(session.startPage, count))
@@ -638,6 +640,7 @@ function ReaderBody({
 
   return (
     <div className={`reader fit-${fit} layout-${layout}`} ref={rootRef} role="dialog" aria-label={`Reading ${item.name}`}>
+      {overlay}
       <header className="reader-bar">
         <button type="button" className="btn" onClick={close} title="Close the reader (Esc)">
           ← Library
