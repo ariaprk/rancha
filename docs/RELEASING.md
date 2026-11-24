@@ -14,15 +14,22 @@ One time:
    Make sure `package-lock.json` is committed (it is on your PC after `npm.cmd install`); the automatic build uses it so the same versions are installed every time.
 3. On GitHub: **Settings → Actions → General → Workflow permissions →** choose *Read and write permissions* (needed so the build can attach files to the release).
 
-To publish a version:
-1. Test the build first: **Actions → Build and release → Run workflow**. When it finishes, download the artifacts and try them.
-2. Then tag and push:
+To publish a version (example: 0.3.0; use your own number everywhere):
+1. Prepare the version:
+   - Set `"version"` in `package.json` (e.g. `0.3.0`). Also set the two `"version"` fields at the top of `package-lock.json`, or run `npm install` once. The app and the file names read the version from here.
+   - Update the version in the "Status" line of `README.md`.
+   - Write `docs/RELEASE_NOTES_v0.3.0.md` (what is new, what changed, limits). The file name must match the tag.
+   - Add a short entry to `docs/STATUS.md`.
+   - Commit, and merge into `main`. Check that the **CI** workflow passes.
+2. Test the build: **Actions → Build and release → Run workflow**. When it finishes, download the artifacts and try them.
+3. Then tag and push (the tag must be `v` + the version in `package.json`):
 
-       git tag v0.1.0
-       git push origin v0.1.0
+       git tag v0.3.0
+       git push origin v0.3.0
 
-   The workflow builds Windows and Linux and creates a **Release** with the files.
-3. Edit the release text on GitHub and paste `docs/RELEASE_NOTES_v0.1.0.md`.
+   The workflow builds Windows and Linux and creates a **Release** with the files. If `docs/RELEASE_NOTES_v0.3.0.md` exists, its text becomes the release description automatically.
+
+If the tag does not match `package.json`, the release build stops with an error, so a wrong version is never published.
 
 Before the first public release: confirm where the icon images come from (see THIRD_PARTY_NOTICES.md), and check the name in LICENSE.
 

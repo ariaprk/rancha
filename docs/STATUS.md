@@ -470,3 +470,12 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 - When a file cannot be played the player says so (error, picture-less, or no decoded sound after 4 s) and offers "Open with the Windows player".
 - LIMITS of this stage: only what Electron's Chromium can decode. Embedded subtitle tracks and multiple audio tracks inside MKV are NOT available; HEVC/H.265 depends on the PC, AC3/DTS audio, AVI/WMV and some other formats may fail. Stage 2 (ffmpeg engine: re-wrap/convert on the fly, embedded subtitles, audio-track choice) is the plan for "all formats"; it adds an ffmpeg program (~70–80 MB) to the app.
 - Verified only in node tests (check-subs: SRT/VTT/ASS parsing, cue lookup, labels; check-subfiles: finding files, encodings, launcher routing builtin/external) and in the test browser with a real WebM + generated subtitles (play, seek, volume, speed, subtitle switch/delay/add, next/previous, auto-next, resume, themes dark/light). NOT verified in real Electron: the library-video protocol with real files, real codecs, real full screen, the Persian code-page detection with real files.
+
+## 0.3.0 (prepared)
+- Version set to 0.3.0 in package.json and package-lock.json; README status line updated.
+- Contents: music section and player (9z28-9z32), built-in video player stage 1 (9z33), Linux .tar.gz download.
+- Database schema 10 -> 11 on first start; a copy is kept in backups/library-before-upgrade-v10.db; older app versions refuse the upgraded library.
+- Dependencies pinned to exact versions again (they had gone back to "latest"); Node >= 22 recorded in package.json "engines" and .nvmrc.
+- New CI workflow (npm ci, typecheck, build on every PR and push to main/collab) and Dependabot (weekly npm, monthly GitHub Actions).
+- Release workflow: stops if the tag does not match package.json, uploads the .tar.gz, and uses docs/RELEASE_NOTES_<tag>.md as the release text.
+- Release notes: docs/RELEASE_NOTES_v0.3.0.md. Not yet built or tested as a release.

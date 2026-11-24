@@ -1,0 +1,21 @@
+# Dependabot opens a pull request when a newer version of a dependency is available.
+# Versions in package.json are exact, so nothing changes until such a PR is reviewed and merged.
+# The CI workflow checks every one of these PRs.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Keep exact versions (no ^ or ~) when Dependabot updates package.json.
+    versioning-strategy: increase
+    groups:
+      # Small updates come together in one PR; major updates get their own PR.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

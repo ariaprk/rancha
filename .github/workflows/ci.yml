@@ -1,0 +1,30 @@
+# Checks every pull request and every push to main/collab:
+# installs the exact versions from package-lock.json, type-checks and builds the code.
+# If someone changes package.json without updating the lock (or the code does not compile),
+# this fails before the change is merged.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, collab]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # The checks do not run the app, so the Electron binary is not needed.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies (must match package-lock.json)
+        run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
