@@ -6,5 +6,7 @@
 // APP_ID is an internal, permanent identifier used for the folder that holds
 // your library data. It must NOT change when the display name changes, or the
 // app would look in a new, empty folder and your library would seem to vanish.
+// It was 'personal-library' before 2026-11-25 and is now 'rancha'. Nothing moves the
+// old folder automatically: users of older versions move it by hand (see the release notes).
 export const APP_NAME = 'Rancha'
-export const APP_ID = 'personal-library'
+export const APP_ID = 'rancha'

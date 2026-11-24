@@ -15,7 +15,7 @@ Node.js is the engine that runs the project's tools.
 1. Go to https://code.visualstudio.com and install it with the defaults.
 
 ## 4. Put the project folder somewhere simple
-Copy the `library-app` folder to a simple place, for example `C:\Projects\library-app`.
+Copy the `rancha` folder to a simple place, for example `C:\Projects\rancha`.
 Avoid folders inside OneDrive or with very long paths.
 
 ## 5. Open a terminal inside the folder

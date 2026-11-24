@@ -13,6 +13,7 @@ import type { ArtKind } from '../../../shared/online'
 import { KIND_LABEL } from './icons'
 import Modal from './Modal'
 import PagePickerDialog from './PagePickerDialog'
+import { songRows, useSongInfo } from '../lib/songInfo'
 
 export type ItemDialogMode =
   | { type: 'create'; kind: ItemKind; parentId: string | null; rom?: boolean } // rom: a console game
@@ -85,6 +86,9 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
   const [pickingPage, setPickingPage] = useState(false) // choosing a page of the book as the cover
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A saved song: what its own tags say (read-only; shown like a music player's "track info").
+  const song = useSongInfo(original && original.kind === 'audio' ? original.id : null)
+  const songDetails = song ? songRows(song) : []
 
   async function browse(pickMode: 'file' | 'folder') {
     setError(null)
@@ -519,6 +523,20 @@ export default function ItemDialog({ mode, onClose, onSaved, hasWallpaper }: Pro
             />
             <span className="muted small">Separate tags with commas.</span>
           </label>
+
+          {songDetails.length > 0 && (
+            <div className="field song-details">
+              <span className="field-label">From the file's tags</span>
+              <dl className="song-details-list">
+                {songDetails.map(([label, value]) => (
+                  <div key={label} className="song-details-row">
+                    <dt>{label}</dt>
+                    <dd title={value}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
 
           {error && <p className="form-error">{error}</p>}
         </div>

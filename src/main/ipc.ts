@@ -37,6 +37,8 @@ import type { Settings } from '../shared/settings'
 import { APP_ID, APP_NAME } from './appInfo'
 import { createBackup, lastAutoBackupTime, stageRestore, validateBackup } from './backup'
 import type { AutoCovers } from './autoCovers'
+import type { SongInfoCache } from './songInfo'
+import type { SongInfo } from '../shared/types'
 import type { CoverStore } from './covers'
 import type { ItemRepository } from './db/itemRepository'
 import type { SettingsStore } from './settingsStore'
@@ -73,6 +75,8 @@ interface Dependencies {
   getRepository: () => ItemRepository
   covers: CoverStore
   autoCovers: AutoCovers
+  /** Song details (title, artist, album...) read from the music files' tags. */
+  songInfo: SongInfoCache
   /** Makes the downsized picture shown in the crop step. */
   coverPreview: (sourcePath: string) => CoverPreview
   /** The same for a book page already in memory. */
@@ -180,6 +184,7 @@ export function registerIpc({
   getRepository,
   covers,
   autoCovers,
+  songInfo,
   coverPreview,
   pagePreview,
   settings,
@@ -630,6 +635,14 @@ export function registerIpc({
     const item = getRepository().getItem(parseId(id))
     if (!item || item.coverFile) return { status: 'none' }
     return autoCovers.lookup(item)
+  })
+
+  // Title, artist, album... of these songs, read from their tags (cached). Only library songs are read.
+  ipcMain.handle(IPC.songInfo, async (_event, ids: unknown): Promise<Record<string, SongInfo>> => {
+    if (!Array.isArray(ids) || ids.length > 20000) throw new Error('Invalid request.')
+    const repository = getRepository()
+    const items = ids.map((id) => repository.getItem(parseId(id))).filter((item): item is LibraryItem => !!item && item.kind === 'audio')
+    return songInfo.lookup(items)
   })
 
   // A PDF's first page, drawn by the interface, is stored as that item's automatic cover.

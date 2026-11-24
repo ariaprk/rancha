@@ -1,6 +1,6 @@
 {
-  "name": "library-app",
-  "version": "0.3.0",
+  "name": "rancha",
+  "version": "1.0.0",
   "description": "A personal digital library and launcher",
   "main": "./out/main/index.js",
   "private": true,

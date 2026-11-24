@@ -265,6 +265,8 @@ export default function App() {
   const folderName = path.length > 0 ? path[path.length - 1].name : 'Home'
   const canAdd = inFolderView && allItems !== null
   const canReorder = inFolderView && sort === 'custom'
+  // The Music section's list view leaves out Type, Tags and Added (every item is a song; they say nothing).
+  const musicList = activeSectionId === 'music'
 
   const allTags = useMemo(() => collectTags(allItems ?? []), [allItems])
 
@@ -407,7 +409,8 @@ export default function App() {
       return
     }
     if (item.kind === 'audio') {
-      // Music plays in the built-in player; the songs of the same folder become the queue.
+      // Music plays in the built-in player; the songs of the same folder become the play order
+      // (not shown; the visible queue holds only songs added by hand).
       const siblings = (allItems ?? []).filter((other) => other.kind === 'audio' && other.parentId === item.parentId)
       player.play(item, siblings)
       return
@@ -789,11 +792,25 @@ export default function App() {
     return count
   }
 
+  // "Add to queue": the songs play after the current one, before the folder continues.
+  function queueSongs(songs: readonly LibraryItem[]) {
+    const added = player.addToQueue(songs)
+    if (added === 0) info(songs.length === 1 ? 'That song is already in the queue.' : 'Those songs are already in the queue.')
+    else info(added === 1 && songs.length === 1 ? `Added “${songs[0].name}” to the queue.` : `Added ${added} ${added === 1 ? 'song' : 'songs'} to the queue.`)
+  }
+
   function bulkMenuEntries(): MenuEntry[] {
     const ids = selectedIds
     const everyFavorite = selectedItems.every((entry) => entry.isFavorite)
     const everyDone = selectedItems.every((entry) => doneIds.has(entry.id))
+    const songs = selectedItems.filter((entry) => entry.kind === 'audio')
     return [
+      ...(songs.length > 0
+        ? [
+            { label: `Add ${songs.length === 1 ? 'the song' : `${songs.length} songs`} to queue`, onSelect: () => queueSongs(songs) },
+            { label: '', separator: true, onSelect: () => undefined }
+          ]
+        : []),
       {
         label: everyFavorite ? 'Remove from favorites' : 'Add to favorites',
         onSelect: () => void bulkFavorite(ids, !everyFavorite)
@@ -820,6 +837,7 @@ export default function App() {
       entries.push({ label: 'Open', onSelect: () => openItem(item) })
     } else {
       entries.push({ label: OPEN_LABEL[item.kind], onSelect: () => void launch(item) })
+      if (item.kind === 'audio') entries.push({ label: 'Add to queue', onSelect: () => queueSongs([item]) })
       if (item.target && !missingIds.has(item.id)) {
         entries.push({ label: 'Show in Explorer', onSelect: () => void revealInExplorer(item) })
       }
@@ -1148,7 +1166,13 @@ export default function App() {
                     cardWidth={settings.cardSize}
                     revealId={revealId}
                     reorder={reorderHandlers}
-                    header={<ItemRowHeader />}
+                    header={
+                      <ItemRowHeader
+                        music={musicList}
+                        sort={sort}
+                        onSortByName={() => update({ sort: sort === 'name' ? 'nameDesc' : 'name' })}
+                      />
+                    }
                     renderRow={(item) => (
                       <ItemRow
                         key={item.id}
@@ -1164,6 +1188,7 @@ export default function App() {
                         onContextMenu={(event) => openContextMenu(event, item)}
                         onDropItem={(draggedId) => void moveItem(draggedId, item.id)}
                         sortable={canReorder}
+                        music={musicList}
                       />
                     )}
                     renderCard={(item) => (

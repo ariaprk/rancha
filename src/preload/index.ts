@@ -6,6 +6,7 @@ import type { Settings } from '../shared/settings'
 import type { ArtDownload, ArtGame, ArtImage, ArtKind, ArtProviderId } from '../shared/online'
 import { IPC } from '../shared/ipc'
 import { pageUrl } from '../shared/reader'
+import type { SongInfo } from '../shared/types'
 import type {
   SubtitleFile,
   AppInfo,
@@ -136,6 +137,10 @@ const api = {
     // Stores a PDF's first page, drawn by the interface, as that item's automatic cover.
     saveAuto: (itemId: string, bytes: Uint8Array): Promise<string | null> =>
       ipcRenderer.invoke(IPC.coverSaveAuto, itemId, bytes)
+  },
+  music: {
+    // Title, artist, album... read from the tags of these songs (by item id; unknown ids are left out).
+    info: (itemIds: string[]): Promise<Record<string, SongInfo>> => ipcRenderer.invoke(IPC.songInfo, itemIds)
   },
   reader: {
     // The private address of one page (0-based) of an open comic.

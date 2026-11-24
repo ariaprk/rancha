@@ -2,6 +2,7 @@
 // Keep in sync with src/preload/index.ts.
 import type { Settings } from '../shared/settings'
 import type { ArtDownload, ArtGame, ArtImage, ArtKind, ArtProviderId } from '../shared/online'
+import type { SongInfo } from '../shared/types'
 import type {
   AppInfo,
   BackupInfo,
@@ -119,6 +120,10 @@ export interface LibraryApi {
     saveWallpaper(bytes: Uint8Array): Promise<string>
     auto(itemId: string): Promise<AutoCoverResult>
     saveAuto(itemId: string, bytes: Uint8Array): Promise<string | null>
+  }
+  music: {
+    /** Title, artist, album... read from the tags of these songs, by item id. */
+    info(itemIds: string[]): Promise<Record<string, SongInfo>>
   }
   reader: {
     pageUrl: (session: { sessionId: string }, index: number) => string

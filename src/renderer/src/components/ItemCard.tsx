@@ -4,6 +4,7 @@ import type { LibraryItem } from '../../../shared/types'
 import { dragSource, useItemDrop } from '../state/useItemDrop'
 import Cover from './Cover'
 import { KIND_LABEL, StarIcon } from './icons'
+import { joinParts, songArtist, useSongInfo } from '../lib/songInfo'
 
 interface Props {
   item: LibraryItem
@@ -105,9 +106,18 @@ export default function ItemCard({
   // Under the name: where the item is (search results), or how many items a collection holds.
   // Plain games / videos / books show no label: their section already says what they are,
   // and a long name can use the second line instead.
+  // A song shows its artist (and album in the tooltip), read from its tags.
+  const song = useSongInfo(item.kind === 'audio' ? item.id : null)
+  const songLine = song ? joinParts(songArtist(song), song.album) : ''
   const subtitle: string | null =
-    location !== undefined ? location : item.kind === 'collection' ? `${childCount} ${childCount === 1 ? 'item' : 'items'}` : null
-  const tooltip = [item.name, location !== undefined ? `${KIND_LABEL[item.kind]} · ${location}` : '', item.description ?? '']
+    location !== undefined
+      ? location
+      : item.kind === 'collection'
+        ? `${childCount} ${childCount === 1 ? 'item' : 'items'}`
+        : song && songArtist(song)
+          ? (songArtist(song) ?? null)
+          : null
+  const tooltip = [item.name, location !== undefined ? `${KIND_LABEL[item.kind]} · ${location}` : '', songLine, item.description ?? '']
     .filter(Boolean)
     .join('\n')
 

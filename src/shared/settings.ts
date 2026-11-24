@@ -43,6 +43,7 @@ export interface Settings {
   musicShuffle: boolean
   musicRepeat: MusicRepeat
   musicAutoplayNext: boolean // keep going with the next song when one ends
+  musicShowQueue: boolean // the players show the queue (songs added by hand); hidden by the queue button
   videoPlayer: VideoPlayerChoice
   videoVolume: number // 0-100
   videoSubSize: number // subtitle size in percent (100 = normal)
@@ -77,6 +78,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicShuffle: false,
   musicRepeat: 'off',
   musicAutoplayNext: true,
+  musicShowQueue: true,
   videoPlayer: 'builtin',
   videoVolume: 100,
   videoSubSize: 100,
@@ -147,6 +149,7 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
     musicShuffle: bool(input.musicShuffle, base.musicShuffle),
     musicRepeat: pick(input.musicRepeat, ['off', 'all', 'one'], base.musicRepeat),
     musicAutoplayNext: bool(input.musicAutoplayNext, base.musicAutoplayNext),
+    musicShowQueue: bool(input.musicShowQueue, base.musicShowQueue),
     videoPlayer: pick(input.videoPlayer, ['builtin', 'external'], base.videoPlayer),
     videoVolume: number(input.videoVolume, 0, 100, base.videoVolume),
     videoSubSize: number(input.videoSubSize, 50, 220, base.videoSubSize),

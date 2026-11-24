@@ -2,7 +2,7 @@
 
 An offline personal library and launcher for your games, videos, comics/books and apps. Everything stays on your computer.
 
-> Status: early release (0.3.0). It was built step by step and mostly tested on Windows 11. The Linux version has been prepared but is **not yet tested on real Linux desktops** — bug reports are very welcome.
+> Status: 1.0.0. It was built step by step and mostly tested on Windows 11. The Linux version has been prepared but is **not yet tested on real Linux desktops** — bug reports are very welcome.
 
 ## What it does
 - Five sections: **Games, Video, Reading, Applications, Music**, with nested collections, tags, favorites, search and sorting.
@@ -31,7 +31,7 @@ The app is not code-signed (certificates cost money), so SmartScreen warns about
 - Make the file executable: `chmod +x Rancha-*.AppImage`.
 - If it does not start on a recent Ubuntu, try `./Rancha-*.AppImage --no-sandbox` (some systems restrict the browser sandbox used by Electron apps).
 - Prefer no AppImage? Use the `.tar.gz`: `tar -xzf Rancha-*.tar.gz`, then run `./rancha` from the extracted folder (the same `--no-sandbox` tip applies).
-- Your data lives in `~/.config/personal-library` (Windows: `%APPDATA%\personal-library`).
+- Your data lives in `~/.config/rancha` (Windows: `%APPDATA%\rancha`).
 
 ## Build from source (owner only)
 
