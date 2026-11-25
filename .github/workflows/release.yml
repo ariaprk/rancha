@@ -22,8 +22,8 @@ jobs:
             script: dist:linux
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Check that the tag matches package.json
@@ -41,7 +41,7 @@ jobs:
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
       - name: Build
         run: npm run ${{ matrix.script }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rancha-${{ matrix.os }}
           path: |
@@ -57,18 +57,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Find the release notes
         id: notes
         shell: bash
         run: |
           file="docs/RELEASE_NOTES_${GITHUB_REF_NAME}.md"
           if [ -f "$file" ]; then echo "path=$file" >> "$GITHUB_OUTPUT"; else echo "::warning::$file not found"; fi
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: files
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           # Normally the release is created in this same repository. To keep the code private
           # but let people download the app, set the variable RELEASES_REPO (e.g. "aria/rancha-releases",
