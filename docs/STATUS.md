@@ -503,3 +503,10 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 - Context menus: check-mark entries, entries that keep the menu open, a dimmed hint at the right.
 - New settings are sanitized: unknown columns dropped, widths clamped, old null sort values fall back to sorting by title.
 - Verified: typecheck. NOT verified in the running app (in particular dragging column edges and the pane handles).
+
+## 1.1.1 (prepared)
+- Version set to 1.1.1 in package.json and package-lock.json. A patch version: no new app features, no change to the data folder or the database. Release notes: docs/RELEASE_NOTES_v1.1.1.md.
+- Linux: the .tar.gz download is replaced by an Arch Linux package (pacman target, zstd, Rancha-<version>-linux-x86_64.pkg.tar.zst); the AppImage stays. electron-builder's default pacman depends (http-parser, libappindicator-gtk3) no longer exist in the Arch repos, so package.json lists its own: gtk3 nss alsa-lib libxss libxtst libnotify libsecret xdg-utils. maintainer and synopsis set (fpm needs a maintainer).
+- Release workflow uploads *.pkg.tar.zst instead of *.tar.gz. README: Arch install/remove lines, AppImage name fixed (x86_64, not x64).
+- Dependencies (Dependabot #9): electron 45.2.1 -> 45.4.1, pdfjs-dist 6.4.299 -> 6.5.438, vite 8.3.4 -> 8.3.8, @vitejs/plugin-react 6.1.2 -> 6.3.0, @types/node 26.6.5 -> 26.6.6. GitHub Actions bumped (checkout 7, setup-node 7, upload-artifact 7, download-artifact 8, action-gh-release 3); Dependabot groups action updates into one PR.
+- Verified: npm run dist:linux on Arch builds both files; pacman -Qip reads the package (name, version 1.1.0-1 at test time, description, depends). NOT verified: installing it with pacman -U, and the build on GitHub's Ubuntu runner.

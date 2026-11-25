@@ -21,8 +21,8 @@ Go to the **Releases** page and pick your system:
 | --- | --- | --- |
 | Windows 10/11 | `Rancha-…-windows-setup.exe` | Installer. |
 | Windows | `Rancha-…-windows-portable.exe` | No install, just run. |
-| Linux (x86_64) | `Rancha-…-linux-x64.AppImage` | `chmod +x` it, then run. |
-| Linux (x86_64) | `Rancha-…-linux-x64.tar.gz` | Extract it, then run `rancha` inside the folder. |
+| Linux (x86_64) | `Rancha-…-linux-x86_64.AppImage` | `chmod +x` it, then run. |
+| Arch Linux (x86_64) | `Rancha-…-linux-x86_64.pkg.tar.zst` | `sudo pacman -U Rancha-*.pkg.tar.zst` |
 
 ### Windows: "Windows protected your PC"
 The app is not code-signed (certificates cost money), so SmartScreen warns about unknown apps. Click **More info → Run anyway**. You can build it yourself from source if you prefer.
@@ -30,7 +30,7 @@ The app is not code-signed (certificates cost money), so SmartScreen warns about
 ### Linux notes
 - Make the file executable: `chmod +x Rancha-*.AppImage`.
 - If it does not start on a recent Ubuntu, try `./Rancha-*.AppImage --no-sandbox` (some systems restrict the browser sandbox used by Electron apps).
-- Prefer no AppImage? Use the `.tar.gz`: `tar -xzf Rancha-*.tar.gz`, then run `./rancha` from the extracted folder (the same `--no-sandbox` tip applies).
+- Arch Linux: install the package with `sudo pacman -U Rancha-*.pkg.tar.zst`, then start Rancha from the app menu or run `rancha`. Remove it with `sudo pacman -R rancha`.
 - Your data lives in `~/.config/rancha` (Windows: `%APPDATA%\rancha`).
 
 ## Build from source (owner only)
@@ -50,7 +50,7 @@ Run these inside the project folder:
     npm run dev          # run the app
     npm run typecheck    # check the code
     npm run dist:win     # build the Windows installer and portable .exe (run on Windows)
-    npm run dist:linux   # build the Linux AppImage and tar.gz (run on Linux)
+    npm run dist:linux   # build the Linux AppImage and Arch package .pkg.tar.zst (run on Linux)
 
 Results appear in the `release` folder.
 

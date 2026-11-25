@@ -17,7 +17,7 @@ One time:
 To publish a version (example: 0.3.0; use your own number everywhere):
 1. Prepare the version:
    - Set `"version"` in `package.json` (e.g. `0.3.0`). Also set the two `"version"` fields at the top of `package-lock.json`, or run `npm install` once. The app and the file names read the version from here.
-   - Update the version in the "Status" line of `README.md`.
+   - `README.md` has no version number: change it only if the downloads (file names, systems) or the note at the top change.
    - Write `docs/RELEASE_NOTES_v0.3.0.md` (what is new, what changed, limits). The file name must match the tag.
    - Add a short entry to `docs/STATUS.md`.
    - Commit, and merge into `main`. Check that the **CI** workflow passes.
