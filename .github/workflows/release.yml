@@ -35,6 +35,11 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
             exit 1
           fi
+      - name: Install packaging tools (Linux)
+        # The Arch package (.pkg.tar.zst) is made by fpm, which calls bsdtar and zstd.
+        # Arch has them already; Ubuntu runners need libarchive-tools for bsdtar.
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools zstd
       - name: Install dependencies
         shell: bash
         run: |
