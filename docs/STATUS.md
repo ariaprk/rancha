@@ -490,3 +490,16 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 - List view: clicking "Name" sorts A-Z / Z-A with an arrow; the Music section hides the Type, Tags and Added columns.
 - The small floating player follows the theme (it was always dark); Big Picture's music panel stays dark on purpose.
 - Verified: typecheck and build. NOT verified in the running app.
+
+## 1.1.0 (prepared)
+- Version set to 1.1.0 in package.json and package-lock.json; README status line updated (only the Linux game section is called untested now). A minor version: new features, no change to the data folder or the database. Release notes: docs/RELEASE_NOTES_v1.1.0.md.
+- Music page: three panes (queue "Up next" / the folder's songs / now playing with big cover and controls), side panes resizable with saved widths (musicQueueWidth, musicNowWidth); narrow windows stack "now playing" above the list. Replaces MusicHeader.tsx.
+- Song list with columns (cover, title, artist, album, album artist, year, genre, track, disc, length, file name, added, tags), chosen from the header's right-click menu (musicColumns). Click a column name to sort A-Z / Z-A (musicSort); folders first, empty values last, ties keep album order.
+- Column widths: drag the edge of a column name (all but cover and title); while dragging only CSS variables (`--mc-<column>`, `--mc-min`) change, the width is saved on release (musicColumnWidths). Double-click the edge or "Normal column widths" resets. The list scrolls sideways when the columns do not fit.
+- Songs shown and searched by their tags (title, artist, album, genre); details read in the background, list re-sorted / re-searched as they arrive.
+- Queue: middle-click adds a song (list, cards, rows), shown as a hint next to "Add to queue"; the same song can be queued several times (entries handled by position); items show number and small cover; the pane shows count and total length.
+- System media controls (MediaSession) show the song's own title, artist and album.
+- Seek bar follows a smooth clock every frame and no longer flicks back after a click or drag. Big Picture: fast wheel turns count every step and scroll smoothly.
+- Context menus: check-mark entries, entries that keep the menu open, a dimmed hint at the right.
+- New settings are sanitized: unknown columns dropped, widths clamped, old null sort values fall back to sorting by title.
+- Verified: typecheck. NOT verified in the running app (in particular dragging column edges and the pane handles).
