@@ -4,7 +4,8 @@ import { dragSource, useItemDrop } from '../state/useItemDrop'
 import Cover from './Cover'
 import { CheckIcon, KIND_LABEL, StarIcon } from './icons'
 import { doneWord } from '../lib/doneStatus'
-import { joinParts, songArtist, useSongInfo } from '../lib/songInfo'
+import { middleClick } from '../lib/middleClick'
+import { joinParts, songArtist, songTitle, useSongInfo } from '../lib/songInfo'
 
 interface Props {
   item: LibraryItem
@@ -26,6 +27,8 @@ interface Props {
   sortable?: boolean
   /** The Music section's list: only cover, name (with artist · album) and item count, no type / tags / date. */
   music?: boolean
+  /** A middle click on a song (adds it to the queue). */
+  onMiddleClick?: () => void
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
@@ -48,7 +51,8 @@ export default function ItemRow({
   onContextMenu,
   onDropItem,
   sortable,
-  music = false
+  music = false,
+  onMiddleClick
 }: Props) {
   const drop = useItemDrop(item.kind === 'collection' ? onDropItem : undefined)
   // A song shows its artist and album (from its tags) under the name, like a music player's list.
@@ -67,13 +71,14 @@ export default function ItemRow({
       data-kind={item.kind}
       {...(sortable ? {} : dragSource(item.id, selectionIds))}
       {...drop.props}
+      {...middleClick(onMiddleClick)}
     >
       <span className="row-cover">
         <Cover item={item} />
       </span>
       <span className="row-name">
         <span className="row-name-text">
-          {item.name}
+          {songTitle(item, song)}
           {subLine !== undefined && <span className="row-location">{subLine}</span>}
         </span>
         {missing && <span className="missing-pill">Missing</span>}

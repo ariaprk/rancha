@@ -11,6 +11,12 @@ export interface MenuEntry {
   disabled?: boolean
   /** Draw a thin dividing line instead of an entry. */
   separator?: boolean
+  /** An on/off entry: a check mark shows when it is on. */
+  checked?: boolean
+  /** The menu stays open after this entry is picked (to switch several on/off entries in a row). */
+  keepOpen?: boolean
+  /** A short hint shown dimmed at the right, like a shortcut (e.g. "Middle click"). */
+  hint?: string
 }
 
 interface Props {
@@ -76,15 +82,22 @@ export default function ContextMenu({ x, y, entries, onClose, className = '' }: 
           <button
             key={index}
             type="button"
-            role="menuitem"
-            className={`menu-item ${entry.danger ? 'danger' : ''}`}
+            role={entry.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+            aria-checked={entry.checked}
+            className={`menu-item ${entry.danger ? 'danger' : ''} ${entry.checked !== undefined ? 'checkable' : ''} ${entry.hint ? 'has-hint' : ''}`}
             disabled={entry.disabled}
             onClick={() => {
-              onClose()
+              if (!entry.keepOpen) onClose()
               entry.onSelect()
             }}
           >
+            {entry.checked !== undefined && (
+              <span className="menu-check" aria-hidden="true">
+                {entry.checked ? '✓' : ''}
+              </span>
+            )}
             {entry.label}
+            {entry.hint && <span className="menu-hint">{entry.hint}</span>}
           </button>
         )
       )}

@@ -16,6 +16,18 @@ export type MusicCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-rig
 export type VideoPlayerChoice = 'builtin' | 'external' // play videos inside the app, or in the default Windows player
 export type MusicRepeat = 'off' | 'all' | 'one'
 
+// The columns the Music section's song list can show (the user picks them by right-clicking the
+// list's header). Always shown in this order; the title is always there.
+export const MUSIC_COLUMNS = ['cover', 'title', 'artist', 'album', 'albumArtist', 'year', 'genre', 'track', 'disc', 'duration', 'fileName', 'added', 'tags'] as const
+export type MusicColumn = (typeof MUSIC_COLUMNS)[number]
+/** The order of the song list: by one column, A-Z or Z-A (by title unless the user picks another). */
+export interface MusicSort {
+  column: MusicColumn
+  desc: boolean
+}
+/** Column widths the user set by dragging a column's edge, in pixels (the others keep their normal width). */
+export type MusicColumnWidths = Partial<Record<MusicColumn, number>>
+
 export interface Settings {
   theme: ThemeMode
   accent: string // a color like "#6c8cff"
@@ -44,6 +56,11 @@ export interface Settings {
   musicRepeat: MusicRepeat
   musicAutoplayNext: boolean // keep going with the next song when one ends
   musicShowQueue: boolean // the players show the queue (songs added by hand); hidden by the queue button
+  musicColumns: MusicColumn[] // the columns of the Music section's song list
+  musicSort: MusicSort // the column the song list is sorted by
+  musicColumnWidths: MusicColumnWidths // the song list's columns the user made wider or narrower
+  musicQueueWidth: number // the Music page's queue pane, in pixels (the user drags its edge)
+  musicNowWidth: number // the Music page's "now playing" pane, in pixels
   videoPlayer: VideoPlayerChoice
   videoVolume: number // 0-100
   videoSubSize: number // subtitle size in percent (100 = normal)
@@ -79,6 +96,11 @@ export const DEFAULT_SETTINGS: Settings = {
   musicRepeat: 'off',
   musicAutoplayNext: true,
   musicShowQueue: true,
+  musicColumns: ['cover', 'title', 'artist', 'album', 'duration'],
+  musicSort: { column: 'title', desc: false },
+  musicColumnWidths: {},
+  musicQueueWidth: 260,
+  musicNowWidth: 360,
   videoPlayer: 'builtin',
   videoVolume: 100,
   videoSubSize: 100,
@@ -88,6 +110,14 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const CARD_SIZE_RANGE = { min: 110, max: 260 } as const
 export const UI_SCALE_RANGE = { min: 80, max: 140 } as const
+/** How wide the Music page's side panes can be made, in pixels (the song list takes the rest). */
+export const MUSIC_PANE_RANGE = { queue: { min: 180, max: 560 }, now: { min: 260, max: 640 } } as const
+/** How narrow / wide a column of the song list can be dragged, in pixels. */
+export const MUSIC_COLUMN_WIDTH_RANGE = { min: 40, max: 800 } as const
+/** The columns whose width can be dragged: all but the picture and the title (the title takes the room left). */
+export function isResizableColumn(id: MusicColumn): boolean {
+  return id !== 'cover' && id !== 'title'
+}
 
 function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value)
@@ -102,6 +132,35 @@ function number(value: unknown, min: number, max: number, fallback: number): num
 
 function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+/** Known column names only, each once; the title is always kept. */
+function musicColumnList(value: unknown, fallback: readonly MusicColumn[]): MusicColumn[] {
+  if (!Array.isArray(value)) return [...fallback]
+  const chosen = MUSIC_COLUMNS.filter((id) => value.includes(id))
+  return chosen.includes('title') ? chosen : ['title', ...chosen]
+}
+
+/** Known, resizable columns only, each width a whole number of pixels within the range. */
+function musicColumnWidthList(value: unknown, fallback: MusicColumnWidths): MusicColumnWidths {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return { ...fallback }
+  const input = value as Record<string, unknown>
+  const widths: MusicColumnWidths = {}
+  for (const id of MUSIC_COLUMNS) {
+    const width = input[id]
+    if (!isResizableColumn(id) || typeof width !== 'number' || !Number.isFinite(width)) continue
+    widths[id] = Math.min(MUSIC_COLUMN_WIDTH_RANGE.max, Math.max(MUSIC_COLUMN_WIDTH_RANGE.min, Math.round(width)))
+  }
+  return widths
+}
+
+// An older settings file may hold null here (the folder's own order, no longer offered): it becomes the fallback.
+function musicSortValue(value: unknown, fallback: MusicSort): MusicSort {
+  if (typeof value !== 'object' || value === null) return fallback
+  const input = value as Record<string, unknown>
+  const column = MUSIC_COLUMNS.find((id) => id === input.column)
+  if (!column || column === 'cover') return fallback // a picture cannot be sorted
+  return { column, desc: input.desc === true }
 }
 
 /**
@@ -150,6 +209,11 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
     musicRepeat: pick(input.musicRepeat, ['off', 'all', 'one'], base.musicRepeat),
     musicAutoplayNext: bool(input.musicAutoplayNext, base.musicAutoplayNext),
     musicShowQueue: bool(input.musicShowQueue, base.musicShowQueue),
+    musicColumns: musicColumnList(input.musicColumns, base.musicColumns),
+    musicSort: musicSortValue(input.musicSort, base.musicSort),
+    musicColumnWidths: musicColumnWidthList(input.musicColumnWidths, base.musicColumnWidths),
+    musicQueueWidth: number(input.musicQueueWidth, MUSIC_PANE_RANGE.queue.min, MUSIC_PANE_RANGE.queue.max, base.musicQueueWidth),
+    musicNowWidth: number(input.musicNowWidth, MUSIC_PANE_RANGE.now.min, MUSIC_PANE_RANGE.now.max, base.musicNowWidth),
     videoPlayer: pick(input.videoPlayer, ['builtin', 'external'], base.videoPlayer),
     videoVolume: number(input.videoVolume, 0, 100, base.videoVolume),
     videoSubSize: number(input.videoSubSize, 50, 220, base.videoSubSize),

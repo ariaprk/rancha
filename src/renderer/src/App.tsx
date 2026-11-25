@@ -10,7 +10,8 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type MouseEvent
+  type MouseEvent,
+  type ReactNode
 } from 'react'
 import type {
   AppInfo,
@@ -42,7 +43,10 @@ import NavButtons from './components/NavButtons'
 import BigPicture from './components/BigPicture'
 import MiniPlayer from './components/MiniPlayer'
 import VideoPlayer from './components/VideoPlayer'
-import MusicHeader from './components/MusicHeader'
+import MusicPage from './components/MusicPage'
+import { MusicListHeader, MusicRow } from './components/MusicList'
+import { columnMinWidth, columnTemplate, sortByColumn, visibleColumns } from './lib/musicColumns'
+import { cachedSongInfo, prefetchSongInfo, songSearchText, useSongInfoRevision } from './lib/songInfo'
 import { usePlayer } from './state/usePlayer'
 import ReaderView from './components/ReaderView'
 import SettingsPage from './components/SettingsPage'
@@ -264,9 +268,21 @@ export default function App() {
   const folderId: string | null = view.type === 'folder' ? view.id : null
   const folderName = path.length > 0 ? path[path.length - 1].name : 'Home'
   const canAdd = inFolderView && allItems !== null
-  const canReorder = inFolderView && sort === 'custom'
   // The Music section's list view leaves out Type, Tags and Added (every item is a song; they say nothing).
   const musicList = activeSectionId === 'music'
+  // Browsing a folder of the Music section: the three-pane music player page (queue, songs, now playing).
+  const musicPage = inFolderView && musicList
+  // The song list sorted by one of its columns (artist, album...) instead of the folder's order.
+  const musicSort = musicPage ? settings.musicSort : null
+  // Dragging to reorder only makes sense in the folder's own order.
+  const canReorder = inFolderView && sort === 'custom' && musicSort === null
+
+  // Sorting by a tag and searching by a song's title need the songs' details: they are read in
+  // the background, and the list is sorted / searched again as they arrive.
+  const songRevision = useSongInfoRevision(searching || musicSort !== null)
+  useEffect(() => {
+    if (searching) prefetchSongInfo(musicSongs.map((song) => song.id))
+  }, [searching, musicSongs])
 
   const allTags = useMemo(() => collectTags(allItems ?? []), [allItems])
 
@@ -274,7 +290,7 @@ export default function App() {
   const folderScopeName = view.type === 'folder' && view.id !== null ? folderName : null
 
   // Decide which items to show.
-  const { title, items, flat } = useMemo(() => {
+  const { title, items: listedItems, flat } = useMemo(() => {
     const everything = allItems ?? []
 
     // Plain browsing: the contents of one folder, in the chosen order.
@@ -313,7 +329,9 @@ export default function App() {
       byId,
       query,
       filters: effectiveFilters,
-      scopeFolderId
+      scopeFolderId,
+      // A song is also found by its own title, artist, album and genre (from its tags).
+      songText: (id) => songSearchText(cachedSongInfo(id))
     })
     // The "Recent" page means most-recently-opened first unless told otherwise.
     const order = view.type === 'recent' && sort === 'custom' ? 'opened' : sort
@@ -326,7 +344,35 @@ export default function App() {
       title = `${base} (filtered)`
     }
     return { title, items: sortResults(results, order, searching), flat: true }
-  }, [allItems, query, view, sort, path, childrenOf, byId, filters, filtering, searching, searchScope])
+    // songRevision: search again when more song details (titles, artists) arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allItems, query, view, sort, path, childrenOf, byId, filters, filtering, searching, searchScope, songRevision])
+
+  // The song list sorted by a column (its songs' details are read in the background for that).
+  useEffect(() => {
+    if (musicSort !== null) prefetchSongInfo(listedItems.filter((item) => item.kind === 'audio').map((item) => item.id))
+  }, [musicSort, listedItems])
+  const items = useMemo(
+    () => (musicSort !== null ? sortByColumn(listedItems, musicSort, cachedSongInfo) : listedItems),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- songRevision: sort again as details arrive
+    [listedItems, musicSort, songRevision]
+  )
+  const musicColumns = useMemo(() => visibleColumns(settings.musicColumns), [settings.musicColumns])
+  const musicTemplate = columnTemplate(musicColumns, settings.musicColumnWidths)
+
+  // On the music page the song list sits in the middle pane, between the queue and the playing song.
+  // It scrolls sideways when the chosen columns do not fit (while a column's edge is dragged,
+  // --mc-min holds the new smallest width).
+  const wrapMusic = (list: ReactNode): ReactNode =>
+    musicPage ? (
+      <MusicPage player={player} settings={settings} songs={items.filter((entry) => entry.kind === 'audio')} onChange={update}>
+        <div className="music-list-inner" style={{ minWidth: `var(--mc-min, ${columnMinWidth(musicColumns, settings.musicColumnWidths)}px)` }}>
+          {list}
+        </div>
+      </MusicPage>
+    ) : (
+      list
+    )
 
   // When a folder opens, the second half of a double-click would land on a card
   // in the NEW folder and open that too. Ignoring clicks for a moment after any
@@ -410,8 +456,11 @@ export default function App() {
     }
     if (item.kind === 'audio') {
       // Music plays in the built-in player; the songs of the same folder become the play order
-      // (not shown; the visible queue holds only songs added by hand).
-      const siblings = (allItems ?? []).filter((other) => other.kind === 'audio' && other.parentId === item.parentId)
+      // (not shown; the visible queue holds only songs added by hand). On the music page that is
+      // the order the list shows (sorted by a column or not).
+      const siblings = musicPage
+        ? items.filter((other) => other.kind === 'audio')
+        : (allItems ?? []).filter((other) => other.kind === 'audio' && other.parentId === item.parentId)
       player.play(item, siblings)
       return
     }
@@ -795,8 +844,8 @@ export default function App() {
   // "Add to queue": the songs play after the current one, before the folder continues.
   function queueSongs(songs: readonly LibraryItem[]) {
     const added = player.addToQueue(songs)
-    if (added === 0) info(songs.length === 1 ? 'That song is already in the queue.' : 'Those songs are already in the queue.')
-    else info(added === 1 && songs.length === 1 ? `Added “${songs[0].name}” to the queue.` : `Added ${added} ${added === 1 ? 'song' : 'songs'} to the queue.`)
+    if (added === 0) return // no songs among them (a song can be queued any number of times)
+    info(added === 1 && songs.length === 1 ? `Added “${songs[0].name}” to the queue.` : `Added ${added} ${added === 1 ? 'song' : 'songs'} to the queue.`)
   }
 
   function bulkMenuEntries(): MenuEntry[] {
@@ -837,7 +886,7 @@ export default function App() {
       entries.push({ label: 'Open', onSelect: () => openItem(item) })
     } else {
       entries.push({ label: OPEN_LABEL[item.kind], onSelect: () => void launch(item) })
-      if (item.kind === 'audio') entries.push({ label: 'Add to queue', onSelect: () => queueSongs([item]) })
+      if (item.kind === 'audio') entries.push({ label: 'Add to queue', hint: 'Middle click', onSelect: () => queueSongs([item]) })
       if (item.target && !missingIds.has(item.id)) {
         entries.push({ label: 'Show in Explorer', onSelect: () => void revealInExplorer(item) })
       }
@@ -1059,6 +1108,7 @@ export default function App() {
           onSelectedTagsChange={setSelectedTags}
           sort={sort}
           onSortChange={(next) => update({ sort: next })}
+          showSort={!musicList}
           viewMode={settings.viewMode}
           onViewModeChange={(viewMode) => update({ viewMode })}
           cardSize={settings.cardSize}
@@ -1068,7 +1118,7 @@ export default function App() {
         />
 
         <main
-          className="content"
+          className={`content ${musicPage && !showSettings ? 'content-music' : ''}`}
           onClick={(event) => {
             // Clicking empty space clears the selection.
             if (!(event.target as HTMLElement).closest('.card, .row, button, input, a')) {
@@ -1133,16 +1183,7 @@ export default function App() {
                   </p>
                 )}
 
-                {inFolderView && activeSectionId === 'music' && (
-                  <MusicHeader
-                    player={player}
-                    settings={settings}
-                    songs={items.filter((entry) => entry.kind === 'audio')}
-                    onChange={update}
-                  />
-                )}
-
-                {items.length === 0 ? (
+                {wrapMusic(items.length === 0 ? (
                   <div className="empty">
                     <p className="empty-title">Nothing here yet</p>
                     <p className="muted">
@@ -1167,13 +1208,35 @@ export default function App() {
                     revealId={revealId}
                     reorder={reorderHandlers}
                     header={
-                      <ItemRowHeader
-                        music={musicList}
-                        sort={sort}
-                        onSortByName={() => update({ sort: sort === 'name' ? 'nameDesc' : 'name' })}
-                      />
+                      musicPage ? (
+                        <MusicListHeader columns={musicColumns} template={musicTemplate} sort={settings.musicSort} widths={settings.musicColumnWidths} onChange={update} />
+                      ) : (
+                        <ItemRowHeader
+                          music={musicList}
+                          sort={sort}
+                          onSortByName={() => update({ sort: sort === 'name' ? 'nameDesc' : 'name' })}
+                        />
+                      )
                     }
-                    renderRow={(item) => (
+                    renderRow={(item) => musicPage ? (
+                      <MusicRow
+                        key={item.id}
+                        item={item}
+                        columns={musicColumns}
+                        template={musicTemplate}
+                        childCount={countOf(item)}
+                        selected={selection.ids.has(item.id)}
+                        selectionIds={selectedIds}
+                        missing={missingIds.has(item.id)}
+                        now={player.current?.id === item.id ? (player.playing ? 'playing' : 'paused') : null}
+                        sortable={canReorder}
+                        onClick={(event) => handleClick(item, event)}
+                        onDoubleClick={() => openItem(item)}
+                        onContextMenu={(event) => openContextMenu(event, item)}
+                        onDropItem={(draggedId) => void moveItem(draggedId, item.id)}
+                        onMiddleClick={() => queueSongs([item])}
+                      />
+                    ) : (
                       <ItemRow
                         key={item.id}
                         item={item}
@@ -1189,6 +1252,7 @@ export default function App() {
                         onDropItem={(draggedId) => void moveItem(draggedId, item.id)}
                         sortable={canReorder}
                         music={musicList}
+                        onMiddleClick={item.kind === 'audio' ? () => queueSongs([item]) : undefined}
                       />
                     )}
                     renderCard={(item) => (
@@ -1207,10 +1271,11 @@ export default function App() {
                         onContextMenu={(event) => openContextMenu(event, item)}
                         onDropItem={(draggedId) => void moveItem(draggedId, item.id)}
                         sortable={canReorder}
+                        onMiddleClick={item.kind === 'audio' ? () => queueSongs([item]) : undefined}
                       />
                     )}
                   />
-                )}
+                ))}
               </>
             )}
           </div>

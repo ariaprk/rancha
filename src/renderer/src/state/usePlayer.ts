@@ -11,23 +11,27 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { audioUrl } from '../../../shared/audio'
 import { buildOrder, pruneOrder, stepTo, type RepeatMode } from '../../../shared/playerQueue'
 import type { Settings } from '../../../shared/settings'
-import type { LibraryItem } from '../../../shared/types'
+import type { LibraryItem, SongInfo } from '../../../shared/types'
+import { cachedSongInfo, songArtist, songInfoFor, songTitle } from '../lib/songInfo'
 
 export interface Player {
   current: LibraryItem | null
   queue: LibraryItem[] // the songs added by hand, in the order they will play
   playing: boolean
-  time: number
+  time: number // updated about four times a second (enough for the time shown as text)
+  /** The playing position right now, smooth enough to move a bar every screen frame. */
+  position: () => number
   duration: number
   error: string | null
   play: (item: LibraryItem, songs: readonly LibraryItem[]) => void
-  /** Adds songs at the end of the queue (songs already in it are skipped). Returns how many were added. */
+  /** Adds songs at the end of the queue (a song may be in it several times). Returns how many were added. */
   addToQueue: (songs: readonly LibraryItem[]) => number
-  /** Plays a queued song right now and takes it out of the queue. */
-  playNow: (id: string) => void
-  removeFromQueue: (id: string) => void
-  /** Moves a queued song so it lands before the song now at `toIndex` (the queue's length = the end). */
-  moveInQueue: (id: string, toIndex: number) => void
+  /** Plays the queued song at `index` right now and takes that entry out of the queue. */
+  playNow: (index: number) => void
+  /** Takes the entry at `index` out of the queue (other copies of the same song stay). */
+  removeFromQueue: (index: number) => void
+  /** Moves the entry at `from` so it lands before the entry now at `toIndex` (the queue's length = the end). */
+  moveInQueue: (from: number, toIndex: number) => void
   clearQueue: () => void
   toggle: () => void
   next: () => void
@@ -182,13 +186,24 @@ export function usePlayer(settings: Settings, update: (patch: Partial<Settings>)
     if (currentId !== null && !exists(currentId)) load(null, false)
   }, [allItems, byId, order, upNext, anchorId, currentId, load, setUpNext])
 
-  // The system media keys and lock-screen controls, where the platform has them.
+  // The system media keys and lock-screen controls, where the platform has them. The song's own
+  // title, artist and album (from its tags) are shown there once they are known.
   useEffect(() => {
     const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
-    if (!session) return
+    if (!session) return undefined
     const item = currentId ? byId.get(currentId) : undefined
+    let cancelled = false
+    const describe = (info: SongInfo | null) => {
+      if (cancelled) return
+      try {
+        session.metadata = item ? new MediaMetadata({ title: songTitle(item, info), artist: songArtist(info) ?? 'Rancha', album: info?.album ?? '' }) : null
+      } catch {
+        // Not supported: nothing to show.
+      }
+    }
+    describe(item ? cachedSongInfo(item.id) : null)
+    if (item) void songInfoFor(item.id).then(describe)
     try {
-      session.metadata = item ? new MediaMetadata({ title: item.name, artist: 'Rancha' }) : null
       session.setActionHandler('play', () => void audio().play())
       session.setActionHandler('pause', () => audio().pause())
       session.setActionHandler('nexttrack', () => go(1, true))
@@ -196,7 +211,42 @@ export function usePlayer(settings: Settings, update: (patch: Partial<Settings>)
     } catch {
       // Not supported: the on-screen controls still work.
     }
+    return () => {
+      cancelled = true
+    }
   }, [currentId, byId, go])
+
+  // A smooth clock for the position bar. The audio element's own clock moves in small, uneven
+  // steps, so a bar drawn straight from it stutters (and guessing ahead of it made the bar wait,
+  // then jump). Instead the bar follows a straight line: the real time since the last frame, times
+  // the playing speed. Each frame the line is nudged a tiny bit (at most 4 ms) toward the
+  // element's clock, so it never drifts away and never moves backwards. Only a real jump (a seek,
+  // a stall, a pause) is followed at once.
+  const clock = useRef({ base: 0, at: 0, running: false })
+  const position = useCallback(() => {
+    const element = audioRef.current
+    if (!element) return 0
+    const media = element.currentTime
+    const now = performance.now()
+    const c = clock.current
+    const total = Number.isFinite(element.duration) ? element.duration : Infinity
+    const running = !element.paused && !element.seeking && !element.ended && element.readyState >= 3
+    if (!running) {
+      c.running = false
+      return Math.min(total, media)
+    }
+    const line = c.base + ((now - c.at) / 1000) * element.playbackRate
+    const drift = media - line
+    if (!c.running || Math.abs(drift) > 0.3) {
+      c.base = media
+      c.at = now
+      c.running = true
+      return Math.min(total, media)
+    }
+    c.base = line + Math.max(-0.004, Math.min(0.004, drift * 0.1))
+    c.at = now
+    return Math.min(total, c.base)
+  }, [])
 
   const play = useCallback((item: LibraryItem, songs: readonly LibraryItem[]) => {
     const ids = songs.filter((song) => song.kind === 'audio').map((song) => song.id)
@@ -209,10 +259,8 @@ export function usePlayer(settings: Settings, update: (patch: Partial<Settings>)
 
   const addToQueue = useCallback((songs: readonly LibraryItem[]) => {
     const waiting = live.current.upNext
-    const added: string[] = []
-    for (const song of songs) {
-      if (song.kind === 'audio' && !waiting.includes(song.id) && !added.includes(song.id)) added.push(song.id)
-    }
+    // A song may be queued any number of times (each entry plays once).
+    const added = songs.filter((song) => song.kind === 'audio').map((song) => song.id)
     if (added.length === 0) return 0
     if (live.current.currentId === null) {
       // Nothing is playing: the first added song starts right away.
@@ -223,20 +271,26 @@ export function usePlayer(settings: Settings, update: (patch: Partial<Settings>)
     return added.length
   }, [load, setUpNext])
 
-  const playNow = useCallback((id: string) => {
-    setUpNext(live.current.upNext.filter((other) => other !== id))
+  // The queue may hold the same song several times, so its entries are addressed by position.
+  const playNow = useCallback((index: number) => {
+    const list = [...live.current.upNext]
+    if (index < 0 || index >= list.length) return
+    const [id] = list.splice(index, 1)
+    setUpNext(list)
     load(id, true)
   }, [load, setUpNext])
 
-  const removeFromQueue = useCallback((id: string) => {
-    setUpNext(live.current.upNext.filter((other) => other !== id))
+  const removeFromQueue = useCallback((index: number) => {
+    const list = [...live.current.upNext]
+    if (index < 0 || index >= list.length) return
+    list.splice(index, 1)
+    setUpNext(list)
   }, [setUpNext])
 
-  const moveInQueue = useCallback((id: string, toIndex: number) => {
+  const moveInQueue = useCallback((from: number, toIndex: number) => {
     const list = [...live.current.upNext]
-    const from = list.indexOf(id)
-    if (from < 0) return
-    list.splice(from, 1)
+    if (from < 0 || from >= list.length) return
+    const [id] = list.splice(from, 1)
     const to = Math.max(0, Math.min(list.length, toIndex > from ? toIndex - 1 : toIndex))
     list.splice(to, 0, id)
     setUpNext(list)
@@ -296,6 +350,7 @@ export function usePlayer(settings: Settings, update: (patch: Partial<Settings>)
     queue: upNext.map((id) => byId.get(id)).filter((item): item is LibraryItem => item !== undefined),
     playing,
     time,
+    position,
     duration,
     error,
     play,

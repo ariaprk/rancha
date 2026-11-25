@@ -4,7 +4,8 @@ import type { LibraryItem } from '../../../shared/types'
 import { dragSource, useItemDrop } from '../state/useItemDrop'
 import Cover from './Cover'
 import { KIND_LABEL, StarIcon } from './icons'
-import { joinParts, songArtist, useSongInfo } from '../lib/songInfo'
+import { joinParts, songArtist, songTitle, useSongInfo } from '../lib/songInfo'
+import { middleClick } from '../lib/middleClick'
 
 interface Props {
   item: LibraryItem
@@ -26,6 +27,8 @@ interface Props {
   onDropItem: (draggedId: string) => void
   /** Reordering by dragging is on (custom order): the drag is handled by the list, not by the browser. */
   sortable?: boolean
+  /** A middle click on a song (adds it to the queue). */
+  onMiddleClick?: () => void
 }
 
 export default function ItemCard({
@@ -41,7 +44,8 @@ export default function ItemCard({
   onDoubleClick,
   onContextMenu,
   onDropItem,
-  sortable
+  sortable,
+  onMiddleClick
 }: Props) {
   const drop = useItemDrop(item.kind === 'collection' ? onDropItem : undefined)
   const cover = useRef<HTMLDivElement>(null)
@@ -117,7 +121,8 @@ export default function ItemCard({
         : song && songArtist(song)
           ? (songArtist(song) ?? null)
           : null
-  const tooltip = [item.name, location !== undefined ? `${KIND_LABEL[item.kind]} · ${location}` : '', songLine, item.description ?? '']
+  const title = songTitle(item, song) // a song's own title (from its tags) once it is known
+  const tooltip = [title, location !== undefined ? `${KIND_LABEL[item.kind]} · ${location}` : '', songLine, item.description ?? '']
     .filter(Boolean)
     .join('\n')
 
@@ -148,6 +153,7 @@ export default function ItemCard({
       data-kind={item.kind}
       {...(sortable ? {} : dragSource(item.id, selectionIds))}
       {...drop.props}
+      {...middleClick(onMiddleClick)}
     >
       <div className="card-cover" ref={cover}>
         <Cover item={item} />
@@ -172,7 +178,7 @@ export default function ItemCard({
         )}
       </div>
       <div className={subtitle === null ? 'card-text card-text-wrap' : 'card-text'}>
-        <span className="card-title">{item.name}</span>
+        <span className="card-title">{title}</span>
         {!compact && subtitle !== null && <span className="card-sub">{subtitle}</span>}
       </div>
     </button>

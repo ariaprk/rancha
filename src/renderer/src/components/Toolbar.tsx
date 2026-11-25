@@ -17,6 +17,8 @@ interface Props {
   onSelectedTagsChange: (tags: string[]) => void
   sort: SortMode
   onSortChange: (value: SortMode) => void
+  /** The sort menu is left out where the list sorts itself (the Music section: by its columns). */
+  showSort?: boolean
   viewMode: ViewMode
   onViewModeChange: (value: ViewMode) => void
   cardSize: number
@@ -125,6 +127,7 @@ export default function Toolbar(props: Props) {
         </label>
       )}
 
+      {props.showSort !== false && (
       <select
         className="select"
         value={props.sort}
@@ -140,6 +143,7 @@ export default function Toolbar(props: Props) {
         <option value="opened">Sort: Last opened</option>
         <option value="type">Sort: Type</option>
       </select>
+      )}
 
       <div className="segmented" role="group" aria-label="View style">
         <ViewButton label="Cover grid" active={props.viewMode === 'covers'} onClick={() => props.onViewModeChange('covers')}>
