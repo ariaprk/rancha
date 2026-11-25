@@ -68,7 +68,7 @@ jobs:
         with:
           path: files
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           # Normally the release is created in this same repository. To keep the code private
           # but let people download the app, set the variable RELEASES_REPO (e.g. "aria/rancha-releases",
