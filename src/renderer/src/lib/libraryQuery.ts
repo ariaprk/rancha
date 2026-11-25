@@ -61,17 +61,29 @@ function matchesFilters(item: LibraryItem, filters: Filters): boolean {
   return true
 }
 
+/** What a song's own tags add to the search: its title, and its artist / album / genre. */
+export interface SongText {
+  title?: string
+  extra?: string
+}
+
+function nameScore(word: string, name: string): number {
+  if (name === word) return 100
+  if (name.startsWith(word)) return 80
+  if (name.split(/[\s\-_:.,]+/).some((part) => part.startsWith(word))) return 60
+  if (name.includes(word)) return 40
+  return 0
+}
+
 /**
- * How well one word matches an item; 0 = no match. Name matches beat tag
- * matches, which beat folder-name and description matches.
+ * How well one word matches an item; 0 = no match. Name matches (the item's name, or a song's
+ * own title) beat artist / album matches and tag matches, which beat folder-name and
+ * description matches.
  */
-function scoreWord(word: string, item: LibraryItem, folderNames: string): number {
-  const name = item.name.toLowerCase()
-  let best = 0
-  if (name === word) best = 100
-  else if (name.startsWith(word)) best = 80
-  else if (name.split(/[\s\-_:.,]+/).some((part) => part.startsWith(word))) best = 60
-  else if (name.includes(word)) best = 40
+function scoreWord(word: string, item: LibraryItem, folderNames: string, song?: SongText): number {
+  let best = nameScore(word, item.name.toLowerCase())
+  if (song?.title) best = Math.max(best, nameScore(word, song.title.toLowerCase()))
+  if (song?.extra && song.extra.toLowerCase().includes(word)) best = Math.max(best, 30)
 
   const tags = item.tags.map((tag) => tag.toLowerCase())
   if (tags.includes(word)) best = Math.max(best, 35)
@@ -89,6 +101,8 @@ export interface QueryInput {
   filters: Filters
   /** Only look inside this folder (and below). null = the whole library. */
   scopeFolderId: string | null
+  /** What is known about a song from its tags (optional). */
+  songText?: (id: string) => SongText | undefined
 }
 
 export interface QueryResult {
@@ -116,10 +130,11 @@ export function runQuery(input: QueryInput): QueryResult[] {
     const folderNames = ancestorsOf(item, input.byId)
       .map((folder) => folder.name.toLowerCase())
       .join(' ')
+    const song = item.kind === 'audio' ? input.songText?.(item.id) : undefined
     let total = 0
     let allMatch = true
     for (const word of words) {
-      const score = scoreWord(word, item, folderNames)
+      const score = scoreWord(word, item, folderNames, song)
       if (score === 0) {
         allMatch = false
         break

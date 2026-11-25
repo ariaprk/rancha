@@ -2590,6 +2590,10 @@ button, input, select, textarea { font-family: inherit; }
 .bp-row-title { font-size: clamp(17px, 2.5vh, 27px); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bp-row-sub { font-size: clamp(12px, 1.8vh, 17px); font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bp-row:not(.focused) .bp-row-sub { opacity: 0; }
+/* While the mouse wheel turns, rows slide quicker so several steps blend into one continuous scroll. */
+.bp.wheeling .bp-row { transition-duration: 140ms, 140ms, 120ms, 120ms; }
+.bp-preview-byline { margin-top: 6px; font-size: clamp(14px, 2vh, 20px); font-weight: 600; color: var(--text-dim); overflow-wrap: anywhere; }
+.bp-preview-byline:empty { display: none; }
 .bp-row-star { color: #f4b92f; font-size: 1.4em; }
 .bp-empty { position: absolute; left: calc(var(--bp-ax) - 50px); top: 0; max-width: 46vw; font-size: clamp(16px, 2.4vh, 24px); font-weight: 600; color: var(--text-dim); }
 
@@ -2898,8 +2902,11 @@ button, input, select, textarea { font-family: inherit; }
 .slider:focus, .slider:focus-visible { outline: none; }
 .slider.disabled { cursor: default; opacity: 0.45; }
 .slider-track { position: relative; width: 100%; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 18%, transparent); transition: height var(--t-fast) var(--ease); }
-.slider-fill { position: absolute; inset: 0 auto 0 0; width: var(--pct); border-radius: inherit; background: linear-gradient(90deg, var(--accent-1, var(--accent)), var(--accent-2, var(--accent))); }
-.slider-thumb { position: absolute; top: 50%; left: var(--pct); width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%) scale(0); transition: transform var(--t-fast) var(--ease); }
+/* The fill is a full-width bar slid in from the left, and the thumb rides a full-width rail: both move with transform only. */
+.slider-fill-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+.slider-fill { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent-1, var(--accent)), var(--accent-2, var(--accent))); transform: translateX(calc(var(--pct, 0%) - 100%)); will-change: transform; }
+.slider-thumb-rail { position: absolute; inset: 0; transform: translateX(var(--pct, 0%)); will-change: transform; pointer-events: none; }
+.slider-thumb { position: absolute; top: 50%; left: 0; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); transform: translate(-50%, -50%) scale(0); transition: transform var(--t-fast) var(--ease); }
 .slider:not(.disabled):hover .slider-track, .slider.dragging .slider-track { height: 6px; }
 .slider:not(.disabled):hover .slider-thumb, .slider.dragging .slider-thumb, .slider:focus-visible .slider-thumb { transform: translate(-50%, -50%) scale(1); }
 .slider-tip { position: absolute; bottom: calc(100% + 4px); transform: translateX(-50%); padding: 2px 6px; border-radius: 6px; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; color: #fff; background: rgba(10, 12, 18, 0.88); z-index: 5; }
@@ -2919,7 +2926,6 @@ button, input, select, textarea { font-family: inherit; }
 .mh-artist { font-size: 14px; font-weight: 600; color: var(--text-dim, #aab); min-width: 0; margin-top: -6px; }
 .mh-meta { font-size: 12px; color: var(--text-dim, #aab); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; }
 .mp-q-item { align-items: baseline; }
-.mp-q-artist { flex: 0 1 auto; max-width: 45%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--text-dim, #aab); font-weight: 400; }
 .bp-music-head { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
 .bp-music-art { width: 56px; height: 56px; border-radius: 10px; flex: none; }
 .bp-music-titles { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -2961,8 +2967,92 @@ button, input, select, textarea { font-family: inherit; }
 .mp-q-grip { flex: none; font-size: 11px; letter-spacing: -3px; color: var(--text-dim); opacity: 0.5; }
 .mp-q-item:hover .mp-q-grip { opacity: 1; }
 .mp-q-mark { font-variant-numeric: tabular-nums; color: var(--text-dim); text-align: right; min-width: 16px; width: auto; }
+/* The song's cover, small, before its title. */
+.mp-q-art { position: relative; flex: none; width: 28px; height: 28px; border-radius: 6px; overflow: hidden; }
+.mp-q-art .cover { position: absolute; inset: 0; }
+.mp-q-art .cover-icon, .mp-q-art .cover-initials { display: none; }
 
 /* A menu opened from a player sits above the floating player. */
 .context-menu.over-player { z-index: 1000; }
 /* Big Picture's music panel is always dark: its text (and the queue inside it) stays light in every theme. */
 .bp-music-panel { --text: #f4f6fc; --text-dim: rgba(244, 246, 252, 0.7); }
+
+/* On/off entries of a menu (e.g. the song list's columns): a check mark in front. */
+.menu-item.checkable { display: flex; align-items: center; gap: 8px; }
+.menu-check { flex: none; width: 16px; text-align: center; font-weight: 700; color: var(--accent); }
+/* A hint at the right of an entry, like a shortcut ("Add to queue      Middle click"). */
+.menu-item.has-hint { display: flex; align-items: center; gap: 8px; }
+.menu-hint { margin-left: auto; padding-left: 20px; font-size: 12px; font-weight: 500; color: var(--text-dim); }
+
+/* ---------- 36. Music page: queue | songs | now playing (like Tauon Music Box) ---------- */
+/* The page fills the window; only the panes scroll (the song list on its own). */
+.content.content-music { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 16px; }
+.content-music > .content-inner { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* The side panes have the widths the user chose (dragging the handles between the panes), but never
+   more than a share of the page, so the song list in the middle always keeps its room. */
+.music-page { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 14px min(var(--mn-w, 360px), 40%); gap: 0; }
+.music-page.with-queue { grid-template-columns: min(var(--mq-w, 260px), 30%) 14px minmax(0, 1fr) 14px min(var(--mn-w, 360px), 40%); }
+.music-page.resizing, .music-page.resizing * { cursor: col-resize !important; user-select: none; -webkit-user-select: none; }
+/* A handle between two panes: invisible until hovered, then a thin accent line. */
+.music-resizer { position: relative; cursor: col-resize; touch-action: none; }
+.music-resizer::after { content: ''; position: absolute; top: 12px; bottom: 12px; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px; background: transparent; transition: background var(--t-fast) var(--ease); }
+.music-resizer:hover::after, .music-resizer.dragging::after { background: var(--accent); }
+.music-pane { min-width: 0; min-height: 0; border-radius: var(--radius); background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(calc(18px * var(--blur-k, 1))) saturate(140%); -webkit-backdrop-filter: blur(calc(18px * var(--blur-k, 1))) saturate(140%); }
+
+/* Left: the queue ("Up next"). */
+.music-queue-pane { display: flex; flex-direction: column; padding: 10px 8px 8px; }
+.mq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px 6px; font-weight: 700; }
+.mq-head .mp-btn { min-width: 26px; height: 26px; font-size: 12px; }
+.mq-body { flex: 1; min-height: 0; overflow: auto; }
+.mq-body .mp-queue { max-height: none; overflow: visible; }
+.mq-foot { flex: none; padding: 8px 6px 2px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* Middle: the songs. The header stays at the top while the list scrolls. */
+.music-list-pane { overflow: auto; padding: 0 8px 8px; }
+.music-list-pane > .empty { padding: 40px 16px; }
+.music-list-pane .row-header.mhead { position: sticky; top: 0; z-index: 2; background: var(--surface); margin-bottom: 2px; }
+.music-list-pane .grid { padding-top: 12px; }
+.mcell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); font-weight: 500; }
+.mcell.num { text-align: right; font-variant-numeric: tabular-nums; }
+.mhead .mcell { color: inherit; font-weight: inherit; overflow: visible; }
+.mhead .mcell.num .row-sort { margin-left: 0; margin-right: -6px; }
+/* The edge of a column's name, in the gap after it: drag it to change the column's width. */
+.mhead .mcell { position: relative; }
+.mhead-grip { position: absolute; top: -6px; bottom: -6px; right: -12px; width: 10px; z-index: 1; cursor: col-resize; touch-action: none; }
+.mhead-grip::after { content: ''; position: absolute; top: 6px; bottom: 6px; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px; background: transparent; transition: background var(--t-fast) var(--ease); }
+.mhead:hover .mhead-grip::after { background: color-mix(in srgb, var(--text) 18%, transparent); }
+.mhead .mhead-grip:hover::after, .mhead-grip.dragging::after { background: var(--accent); }
+body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-select: none; -webkit-user-select: none; }
+.mcell-title { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 600; }
+.mcell-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mcell-count { flex: none; font-size: 12px; font-weight: 500; color: var(--text-dim); }
+/* The playing song: every column in the accent color (artist, album, length...), not only the title. */
+.mrow.now .mcell, .mrow.now .mcell-text, .mrow.now .mcell-count { color: var(--accent); }
+.mrow-now { flex: none; font-size: 10px; color: var(--accent); }
+
+/* Right: the playing song, big. */
+/* Only scrolls up and down (when the window is short); never sideways. */
+.music-now-pane { overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 20px 18px; text-align: center; }
+.mn-art { position: relative; flex: none; width: 100%; max-width: 380px; aspect-ratio: 1; border-radius: 14px; overflow: hidden; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--accent-1, #8fb0ff), var(--accent-2, #5a63ff)); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35); }
+.mn-art .cover { position: absolute; inset: 0; }
+.mn-art .cover-initials { font-size: 42px; }
+.mn-text { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mn-artist { font-size: 15px; font-weight: 600; color: var(--accent); min-width: 0; }
+.mn-title { font-size: 22px; font-weight: 800; line-height: 1.25; min-width: 0; }
+.mn-meta { font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mn-controls { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.mn-controls .mp-volume input { min-width: 0; }
+.mn-actions { max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; }
+.mn-actions .mh-check { min-width: 0; }
+
+@media (max-width: 1100px) {
+  .mn-title { font-size: 18px; }
+}
+/* A narrow window: the playing song on top, the songs below (the queue is opened from the queue button). */
+@media (max-width: 820px) {
+  .music-page, .music-page.with-queue { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 14px; }
+  .music-queue-pane, .music-resizer { display: none; }
+  .music-now-pane { order: -1; flex-direction: row; flex-wrap: wrap; text-align: left; overflow: visible; }
+  .mn-art { width: 96px; }
+  .mn-text { flex: 1; width: auto; }
+}

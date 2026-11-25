@@ -18,6 +18,8 @@ import MaskIcon, { SECTION_MASKS } from './MaskIcon'
 import { ClockIcon, FolderIcon, HomeIcon, NoteIcon, StarIcon } from './icons'
 import Marquee from './Marquee'
 import BpMusicPanel, { type BpMusic } from './BpMusicPanel'
+import { useNowPlaying } from './MusicControls'
+import { ItemTitle, SongByline } from './SongText'
 
 interface Props {
   items: readonly LibraryItem[]
@@ -30,6 +32,8 @@ interface Props {
 const VISIBLE_BEFORE = 1
 const VISIBLE_AFTER = 4
 const PAGE_STEP = 6
+const WHEEL_ROW = 40 // wheel distance per row (a mouse notch is about 100: two or three rows)
+const WHEEL_MAX = 6 // the most rows one wheel event can move
 
 /** The icon of a category: the designed PNG icons for sections, line icons for the rest. */
 function CategoryIcon({ category, size }: { category: BpCategory; size: number }): ReactNode {
@@ -62,6 +66,7 @@ function overlayOpen(): boolean {
 
 export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, music }: Props) {
   const [musicOpen, setMusicOpen] = useState(false)
+  const nowPlaying = useNowPlaying(music.player.current) // the playing song's own title (from its tags)
   const categories = useMemo(() => buildCategories(items), [items])
   const [catIndex, setCatIndex] = useState(() => Math.min(2, categories.length - 1)) // start on the first collection
   const [paths, setPaths] = useState<Record<string, string[]>>({}) // folders opened inside each category
@@ -129,6 +134,9 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
           const next = clampIndex(s.focus + step, s.rowCount)
           if (next !== s.focus) {
             setFocus(s.listKey, next)
+            // Several steps before the next drawing (a fast wheel turn) must all count, not only the first.
+            s.focus = next
+            s.focused = s.list[next] ?? null
             playSound('tap')
           }
           break
@@ -215,6 +223,13 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
     let carriedY = 0
     let carriedX = 0
     let lastStep = 0
+    let wheelTimer = 0
+    // While the wheel turns, the rows slide faster, so a long turn reads as one continuous scroll.
+    const markWheeling = () => {
+      node.classList.add('wheeling')
+      window.clearTimeout(wheelTimer)
+      wheelTimer = window.setTimeout(() => node.classList.remove('wheeling'), 220)
+    }
     function onWheel(event: WheelEvent) {
       if (overlayOpen()) return
       event.preventDefault()
@@ -230,9 +245,11 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
           act(moved.steps > 0 ? 'right' : 'left', false)
         }
       } else {
-        const moved = wheelSteps(carriedY, event.deltaY * unit, 50)
+        const moved = wheelSteps(carriedY, event.deltaY * unit, WHEEL_ROW)
         carriedY = moved.carried
-        for (let i = 0; i < Math.min(3, Math.abs(moved.steps)); i++) act(moved.steps > 0 ? 'down' : 'up', false)
+        const steps = Math.max(-WHEEL_MAX, Math.min(WHEEL_MAX, moved.steps))
+        for (let i = 0; i < Math.abs(steps); i++) act(steps > 0 ? 'down' : 'up', false)
+        if (steps !== 0) markWheeling()
       }
     }
     function onMouseUp(event: MouseEvent) {
@@ -249,6 +266,7 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
     window.addEventListener('mouseup', onMouseUp)
     node.addEventListener('contextmenu', onContextMenu)
     return () => {
+      window.clearTimeout(wheelTimer)
       node.removeEventListener('wheel', onWheel)
       window.removeEventListener('mouseup', onMouseUp)
       node.removeEventListener('contextmenu', onContextMenu)
@@ -322,9 +340,17 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
             <Cover item={item} />
           </span>
           <span className="bp-row-text">
-            <span className="bp-row-title">{item.name}</span>
+            <span className="bp-row-title"><ItemTitle item={item} /></span>
             <span className="bp-row-sub">
-              {item.kind === 'collection' ? kindLabel(item, childCount(item.id)) : (progress ? `Read ${progress}` : lastPlayedText(item.lastOpenedAt) || kindLabel(item))}
+              {item.kind === 'collection' ? (
+                kindLabel(item, childCount(item.id))
+              ) : item.kind === 'audio' && isFocus ? (
+                <SongByline item={item} fallback={lastPlayedText(item.lastOpenedAt) || kindLabel(item)} />
+              ) : progress ? (
+                `Read ${progress}`
+              ) : (
+                lastPlayedText(item.lastOpenedAt) || kindLabel(item)
+              )}
             </span>
           </span>
           {item.isFavorite && <span className="bp-row-star" aria-label="Favorite">★</span>}
@@ -370,7 +396,7 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
           }}
         >
           <NoteIcon size={22} />
-          {music.player.current && <Marquee className="bp-music-now" text={`${music.player.playing ? '● ' : ''}${music.player.current.name}`} />}
+          {music.player.current && <Marquee className="bp-music-now" text={`${music.player.playing ? '● ' : ''}${nowPlaying.title}`} />}
         </button>
       </header>
       {musicOpen && <BpMusicPanel music={music} onClose={() => setMusicOpen(false)} />}
@@ -430,7 +456,10 @@ export default function BigPicture({ items, onOpen, onToggleFavorite, onExit, mu
           <div className={`bp-preview-cover bp-clickable`} onClick={() => activate(focused)} title={focused.kind === 'collection' ? 'Open folder' : 'Open'}>
             <Cover item={focused} />
           </div>
-          <div className="bp-preview-title">{focused.name}</div>
+          <div className="bp-preview-title"><ItemTitle item={focused} /></div>
+          {focused.kind === 'audio' && (
+            <div className="bp-preview-byline"><SongByline item={focused} fallback="" /></div>
+          )}
           <div className="bp-badges">
             <span className="bp-badge">{kindLabel(focused, childCount(focused.id))}</span>
             {focused.isFavorite && <span className="bp-badge star">★ Favorite</span>}

@@ -3,6 +3,7 @@ import { useRef, useState, type DragEvent, type MouseEvent, type ReactNode } fro
 import { createPortal } from 'react-dom'
 import { formatTime } from '../../../shared/playerQueue'
 import ContextMenu, { type MenuEntry } from './ContextMenu'
+import Cover from './Cover'
 import Slider from './Slider'
 import type { Settings } from '../../../shared/settings'
 import type { LibraryItem, SongInfo } from '../../../shared/types'
@@ -93,6 +94,7 @@ export function SeekBar({ player }: { player: Player }) {
         valueText={`${formatTime(player.time)} of ${formatTime(player.duration)}`}
         tip={known ? (seconds) => formatTime(seconds) : undefined}
         onChange={(seconds) => player.seek(seconds)}
+        read={known ? player.position : undefined}
         disabled={!known}
       />
       <span className="mp-time">{formatTime(player.duration)}</span>
@@ -170,55 +172,64 @@ const QUEUE_MIME = 'application/x-rancha-queue'
  * right-click for Play now / Remove; double-click plays it now.
  */
 export function QueueList({ player }: { player: Player }) {
-  const [dragId, setDragId] = useState<string | null>(null)
+  // The same song may be queued several times, so entries are handled by their position.
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropAt, setDropAt] = useState<number | null>(null) // the gap the dragged song would land in
-  const [menu, setMenu] = useState<{ x: number; y: number; id: string; index: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; index: number } | null>(null)
   const queue = player.queue
 
   if (queue.length === 0) {
-    return <p className="muted small mp-empty">The queue is empty. Right-click a song and choose “Add to queue”.</p>
+    return <p className="muted small mp-empty">The queue is empty. Middle-click a song, or right-click it and choose “Add to queue”.</p>
   }
 
   const endDrag = () => {
-    setDragId(null)
+    setDragIndex(null)
     setDropAt(null)
   }
+
+  // A key per entry: the song's id plus how many copies of it come before ("id:0", "id:1"...).
+  const seen = new Map<string, number>()
+  const keys = queue.map((song) => {
+    const copy = seen.get(song.id) ?? 0
+    seen.set(song.id, copy + 1)
+    return `${song.id}:${copy}`
+  })
 
   const gapAt = (event: DragEvent<HTMLElement>, index: number) => {
     const box = event.currentTarget.getBoundingClientRect()
     return event.clientY > box.top + box.height / 2 ? index + 1 : index
   }
 
-  const entries = (id: string, index: number): MenuEntry[] => [
-    { label: 'Play now', onSelect: () => player.playNow(id) },
-    ...(index > 0 ? [{ label: 'Move to the top', onSelect: () => player.moveInQueue(id, 0) }] : []),
-    ...(index < queue.length - 1 ? [{ label: 'Move to the bottom', onSelect: () => player.moveInQueue(id, queue.length) }] : []),
-    { label: 'Remove from queue', onSelect: () => player.removeFromQueue(id) },
+  const entries = (index: number): MenuEntry[] => [
+    { label: 'Play now', onSelect: () => player.playNow(index) },
+    ...(index > 0 ? [{ label: 'Move to the top', onSelect: () => player.moveInQueue(index, 0) }] : []),
+    ...(index < queue.length - 1 ? [{ label: 'Move to the bottom', onSelect: () => player.moveInQueue(index, queue.length) }] : []),
+    { label: 'Remove from queue', onSelect: () => player.removeFromQueue(index) },
     { label: '', separator: true, onSelect: () => undefined },
     { label: 'Clear the queue', danger: true, onSelect: player.clearQueue }
   ]
 
   return (
     <>
-      <ol className={`mp-queue ${dragId ? 'sorting' : ''}`}>
+      <ol className={`mp-queue ${dragIndex !== null ? 'sorting' : ''}`}>
         {queue.map((song, index) => (
           <QueueRow
-            key={song.id}
+            key={keys[index]}
             song={song}
             position={index + 1}
-            dragging={dragId === song.id}
-            dropBefore={dragId !== null && dropAt === index}
-            dropAfter={dragId !== null && index === queue.length - 1 && dropAt === queue.length}
-            onDoubleClick={() => player.playNow(song.id)}
+            dragging={dragIndex === index}
+            dropBefore={dragIndex !== null && dropAt === index}
+            dropAfter={dragIndex !== null && index === queue.length - 1 && dropAt === queue.length}
+            onDoubleClick={() => player.playNow(index)}
             onContextMenu={(event) => {
               event.preventDefault()
               event.stopPropagation()
-              setMenu({ x: event.clientX, y: event.clientY, id: song.id, index })
+              setMenu({ x: event.clientX, y: event.clientY, index })
             }}
             onDragStart={(event) => {
-              event.dataTransfer.setData(QUEUE_MIME, song.id)
+              event.dataTransfer.setData(QUEUE_MIME, String(index))
               event.dataTransfer.effectAllowed = 'move'
-              setDragId(song.id)
+              setDragIndex(index)
             }}
             onDragEnd={endDrag}
             onDragOver={(event) => {
@@ -232,8 +243,8 @@ export function QueueList({ player }: { player: Player }) {
               if (!event.dataTransfer.types.includes(QUEUE_MIME)) return
               event.preventDefault()
               event.stopPropagation()
-              const id = event.dataTransfer.getData(QUEUE_MIME)
-              if (id) player.moveInQueue(id, gapAt(event, index))
+              const from = Number(event.dataTransfer.getData(QUEUE_MIME))
+              if (Number.isInteger(from)) player.moveInQueue(from, gapAt(event, index))
               endDrag()
             }}
           />
@@ -242,7 +253,7 @@ export function QueueList({ player }: { player: Player }) {
       {/* Drawn on the page itself: the players are blurred panels, which would trap and clip a menu placed inside them. */}
       {menu &&
         createPortal(
-          <ContextMenu className="over-player" x={menu.x} y={menu.y} entries={entries(menu.id, menu.index)} onClose={() => setMenu(null)} />,
+          <ContextMenu className="over-player" x={menu.x} y={menu.y} entries={entries(menu.index)} onClose={() => setMenu(null)} />,
           document.body
         )}
     </>
@@ -263,25 +274,26 @@ interface RowProps {
   onDrop: (event: DragEvent<HTMLLIElement>) => void
 }
 
-// One song of the queue: a grip, its title, and its artist in a dimmer color (read once it is near the screen).
+// One song of the queue: a grip, its number, a small cover and its title (read from its tags once it is near the screen).
 // Not a button on purpose: it never takes the keyboard focus, so Space/Enter keep working in the reader or a game list.
 function QueueRow({ song, position, dragging, dropBefore, dropAfter, ...handlers }: RowProps) {
   const [ref, near] = useNearScreen<HTMLLIElement>()
   const info = useSongInfo(near ? song.id : null)
-  const title = songTitle(song, info)
-  const artist = songArtist(info)
+  const title = songTitle(song, info) // the song's own title from its tags (only the title: no artist or other tags here)
   return (
     <li
       ref={ref}
       className={`mp-q-item ${dragging ? 'dragging' : ''} ${dropBefore ? 'drop-before' : ''} ${dropAfter ? 'drop-after' : ''}`}
       draggable
-      title={`${artist ? `${title} — ${artist}` : title}\nDrag to change the order · right-click for more`}
+      title={`${title}\nDrag to change the order · right-click for more`}
       {...handlers}
     >
       <span className="mp-q-grip" aria-hidden="true">⋮⋮</span>
       <span className="mp-q-mark">{position}</span>
+      <span className="mp-q-art" aria-hidden="true">
+        <Cover item={song} />
+      </span>
       <span className="mp-q-name">{title}</span>
-      {artist && <span className="mp-q-artist">{artist}</span>}
     </li>
   )
 }

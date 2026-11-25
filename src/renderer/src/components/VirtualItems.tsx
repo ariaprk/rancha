@@ -29,6 +29,8 @@ const GAP_Y = { grid: 26, compact: 17 }
 const GRID_PADDING_X = 4 // .grid has 6px / 4px padding
 const TEXT_ESTIMATE = 54 // title + subtitle under a cover, until measured
 const LIST_ROW = 52 // rows have a fixed height (see styles.css)
+// The scrolling area: a pane of its own (the Music section's song list), or the main content area.
+const SCROLLER = '[data-scroller], .content'
 
 export default function VirtualItems({ items, layout, cardWidth, revealId, header, renderCard, renderRow, reorder }: Props) {
   const wrapper = useRef<HTMLDivElement>(null)
@@ -52,7 +54,7 @@ export default function VirtualItems({ items, layout, cardWidth, revealId, heade
   // Follow the width of the list and the position of the scrolling area.
   useEffect(() => {
     const node = wrapper.current
-    const scroller = node?.closest('.content') as HTMLElement | null
+    const scroller = node?.closest(SCROLLER) as HTMLElement | null
     if (!node || !scroller) return
     let frame = 0
     const update = () => {
@@ -96,7 +98,7 @@ export default function VirtualItems({ items, layout, cardWidth, revealId, heade
     if (revealId === null || revealed.current === revealId) return
     const index = items.findIndex((item) => item.id === revealId)
     const node = wrapper.current
-    const scroller = node?.closest('.content') as HTMLElement | null
+    const scroller = node?.closest(SCROLLER) as HTMLElement | null
     if (index < 0 || !node || !scroller) return
     revealed.current = revealId
     const listTop = node.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
@@ -133,7 +135,7 @@ export default function VirtualItems({ items, layout, cardWidth, revealId, heade
     const grid = node?.firstElementChild as HTMLElement | null
     if (!pressed || !node || !grid || !grid.contains(pressed)) return
     session.current?.cancel()
-    session.current = startReorder(grid, node.closest('.content') as HTMLElement | null, pressed, event.nativeEvent as unknown as globalThis.PointerEvent, handlers)
+    session.current = startReorder(grid, node.closest(SCROLLER) as HTMLElement | null, pressed, event.nativeEvent as unknown as globalThis.PointerEvent, handlers)
   }, [])
   // The click that ends a drag must not open or select anything.
   const onClickCapture = useCallback((event: MouseEvent) => {
