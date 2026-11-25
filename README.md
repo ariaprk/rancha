@@ -2,7 +2,7 @@
 
 An offline personal library and launcher for your games, videos, comics/books and apps. Everything stays on your computer.
 
-> Status: 1.0.0. It was built step by step and mostly tested on Windows 11. The Linux version has been prepared but is **not yet tested on real Linux desktops** — bug reports are very welcome.
+> The game section of the Linux version has been prepared but is **not yet tested on real Linux desktops** — bug reports are very welcome.
 
 ## What it does
 - Five sections: **Games, Video, Reading, Applications, Music**, with nested collections, tags, favorites, search and sorting.
