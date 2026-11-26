@@ -510,3 +510,10 @@ Not done / unknown: real Linux desktop run, Steam Deck, Wine/Proton profiles, Fl
 - Release workflow uploads *.pkg.tar.zst instead of *.tar.gz. README: Arch install/remove lines, AppImage name fixed (x86_64, not x64).
 - Dependencies (Dependabot #9): electron 45.2.1 -> 45.4.1, pdfjs-dist 6.4.299 -> 6.5.438, vite 8.3.4 -> 8.3.8, @vitejs/plugin-react 6.1.2 -> 6.3.0, @types/node 26.6.5 -> 26.6.6. GitHub Actions bumped (checkout 7, setup-node 7, upload-artifact 7, download-artifact 8, action-gh-release 3); Dependabot groups action updates into one PR.
 - Verified: npm run dist:linux on Arch builds both files; pacman -Qip reads the package (name, version 1.1.0-1 at test time, description, depends). NOT verified: installing it with pacman -U, and the build on GitHub's Ubuntu runner.
+
+## Built-in video player removed
+- Owner's decision: the built-in video player (stage 1, 9z33) is removed. Videos open in the default Windows video program again, as before 9z33. The earlier ffmpeg/mpv experiments were never merged.
+- Removed: VideoPlayer component, resume positions (lib/videoResume.ts), subtitle parsing and file finding (shared/subtitles.ts, main/subtitleFiles.ts), the subtitle IPC calls and `window.api.video`, the "Video" settings (videoPlayer, videoVolume, videoSubSize, videoSubBox, videoAutoNext; old values in settings.json are simply ignored), the 'video' result of `library.open` and its `external` argument, the player's styles, and the music overlay's player placement in App. The Settings tab is called "Music" again.
+- Kept: the `library-video` address and `previewTime`, which the automatic cover (a frame of the video) uses, and fileRange.ts (also used by music).
+- Verified: typecheck of main, preload and renderer (test environment). NOT verified: a run of the app.
+

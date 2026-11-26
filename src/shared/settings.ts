@@ -13,7 +13,6 @@ export type IconTone = 'accent' | 'white' | 'black' | 'colorful'
 export type ReaderFit = 'page' | 'width' // whole page visible, or fill the width
 export type MusicOverlay = 'hidden' | 'compact' | 'expanded' // the small player shown over everything
 export type MusicCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-export type VideoPlayerChoice = 'builtin' | 'external' // play videos inside the app, or in the default Windows player
 export type MusicRepeat = 'off' | 'all' | 'one'
 
 // The columns the Music section's song list can show (the user picks them by right-clicking the
@@ -61,11 +60,6 @@ export interface Settings {
   musicColumnWidths: MusicColumnWidths // the song list's columns the user made wider or narrower
   musicQueueWidth: number // the Music page's queue pane, in pixels (the user drags its edge)
   musicNowWidth: number // the Music page's "now playing" pane, in pixels
-  videoPlayer: VideoPlayerChoice
-  videoVolume: number // 0-100
-  videoSubSize: number // subtitle size in percent (100 = normal)
-  videoSubBox: boolean // dark box behind subtitles
-  videoAutoNext: boolean // continue with the next video of the folder when one ends
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -100,12 +94,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicSort: { column: 'title', desc: false },
   musicColumnWidths: {},
   musicQueueWidth: 260,
-  musicNowWidth: 360,
-  videoPlayer: 'builtin',
-  videoVolume: 100,
-  videoSubSize: 100,
-  videoSubBox: false,
-  videoAutoNext: true
+  musicNowWidth: 360
 }
 
 export const CARD_SIZE_RANGE = { min: 110, max: 260 } as const
@@ -213,11 +202,6 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
     musicSort: musicSortValue(input.musicSort, base.musicSort),
     musicColumnWidths: musicColumnWidthList(input.musicColumnWidths, base.musicColumnWidths),
     musicQueueWidth: number(input.musicQueueWidth, MUSIC_PANE_RANGE.queue.min, MUSIC_PANE_RANGE.queue.max, base.musicQueueWidth),
-    musicNowWidth: number(input.musicNowWidth, MUSIC_PANE_RANGE.now.min, MUSIC_PANE_RANGE.now.max, base.musicNowWidth),
-    videoPlayer: pick(input.videoPlayer, ['builtin', 'external'], base.videoPlayer),
-    videoVolume: number(input.videoVolume, 0, 100, base.videoVolume),
-    videoSubSize: number(input.videoSubSize, 50, 220, base.videoSubSize),
-    videoSubBox: bool(input.videoSubBox, base.videoSubBox),
-    videoAutoNext: bool(input.videoAutoNext, base.videoAutoNext)
+    musicNowWidth: number(input.musicNowWidth, MUSIC_PANE_RANGE.now.min, MUSIC_PANE_RANGE.now.max, base.musicNowWidth)
   }
 }

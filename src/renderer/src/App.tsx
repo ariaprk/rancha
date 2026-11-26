@@ -42,7 +42,6 @@ import MoveDialog from './components/MoveDialog'
 import NavButtons from './components/NavButtons'
 import BigPicture from './components/BigPicture'
 import MiniPlayer from './components/MiniPlayer'
-import VideoPlayer from './components/VideoPlayer'
 import MusicPage from './components/MusicPage'
 import { MusicListHeader, MusicRow } from './components/MusicList'
 import { columnMinWidth, columnTemplate, sortByColumn, visibleColumns } from './lib/musicColumns'
@@ -141,7 +140,6 @@ export default function App() {
   // Step before scanning: "What are you adding?" (paths = folders already chosen by dropping them).
   const [askContent, setAskContent] = useState<{ parentId: string | null; paths: string[] | null } | null>(null)
   const [reading, setReading] = useState<{ item: LibraryItem; session: ReaderSession } | null>(null)
-  const [watching, setWatching] = useState<LibraryItem | null>(null) // the video playing in the built-in player
   const [bigPicture, setBigPicture] = useState(false) // the full-screen, controller-friendly mode
   const [dialogError, setDialogError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -469,22 +467,6 @@ export default function App() {
 
   // Launches an app, plays a video in the default Windows player, etc. The
   // backend finds the file from the item's id and reports what happened.
-  // The videos of the same folder (for next / previous episode), in natural order (2 before 10).
-  function videoPlaylist(item: LibraryItem): LibraryItem[] {
-    return (allItems ?? [])
-      .filter((other) => other.kind === 'video' && other.parentId === item.parentId)
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-  }
-
-  async function openVideoExternally(item: LibraryItem) {
-    try {
-      await window.api.library.open(item.id, true)
-      info(`Opening “${item.name}” in the Windows player…`)
-    } catch (error) {
-      setStatus({ kind: 'error', text: readableError(error) })
-    }
-  }
-
   function closeReader() {
     if (reading) void window.api.reader.close(reading.session.sessionId).catch(() => undefined)
     setReading(null)
@@ -536,14 +518,6 @@ export default function App() {
                   other.id === item.id ? { ...other, lastOpenedAt: Date.now() } : other
                 )
               : current
-          )
-          break
-        case 'video':
-          // Play inside the app. Music is paused so the two do not play together.
-          if (player.playing) player.toggle()
-          setWatching(item)
-          setAllItems((current) =>
-            current ? current.map((other) => (other.id === item.id ? { ...other, lastOpenedAt: result.openedAt } : other)) : current
           )
           break
         case 'chapters':
@@ -1079,7 +1053,7 @@ export default function App() {
 
   return (
     <div
-      className={`app ${settings.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${reading || watching || gameScreenId !== null || bigPicture ? 'overlay-open' : ''}`}
+      className={`app ${settings.sidebarCollapsed ? 'sidebar-collapsed' : ''} ${reading || gameScreenId !== null || bigPicture ? 'overlay-open' : ''}`}
       onDragEnter={onAppDragEnter}
       onDragOver={onAppDragOver}
       onDragLeave={onAppDragLeave}
@@ -1301,7 +1275,7 @@ export default function App() {
       )}
 
       {/* While reading the overlay lives inside the reader (full screen shows only that); in Big Picture the music button replaces it. */}
-      {!reading && !bigPicture && !watching && <MiniPlayer player={player} settings={settings} onChange={update} />}
+      {!reading && !bigPicture && <MiniPlayer player={player} settings={settings} onChange={update} />}
 
       {gameScreenId !== null && (() => {
         const game = allItems?.find((entry) => entry.id === gameScreenId)
@@ -1320,29 +1294,6 @@ export default function App() {
           onLayoutChange={(readerLayout) => update({ readerLayout })}
           onFitChange={(readerFit) => update({ readerFit })}
           onClose={closeReader}
-          overlay={<MiniPlayer player={player} settings={settings} onChange={update} />}
-        />
-      )}
-
-      {watching && (
-        <VideoPlayer
-          key={watching.id}
-          item={watching}
-          playlist={videoPlaylist(watching)}
-          settings={settings}
-          onChange={update}
-          onClose={() => {
-            setWatching(null)
-            void refresh()
-          }}
-          onSwitch={(video) => {
-            setWatching(video)
-            void window.api.library.open(video.id).catch(() => undefined) // records "last opened" (returns 'video', nothing else happens)
-          }}
-          onWatched={(video) => {
-            if (!doneIds.has(video.id)) void runBulk([video.id], { type: 'done', value: true })
-          }}
-          onExternal={(video) => void openVideoExternally(video)}
           overlay={<MiniPlayer player={player} settings={settings} onChange={update} />}
         />
       )}

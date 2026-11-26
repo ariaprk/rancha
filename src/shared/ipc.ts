@@ -12,8 +12,6 @@ export const IPC = {
   libraryReorder: 'library:reorder',
   libraryImportPaths: 'library:importPaths',
   libraryOpen: 'library:open',
-  videoSubtitles: 'video:subtitles',
-  videoPickSubtitle: 'video:pickSubtitle',
   libraryReveal: 'library:reveal',
   libraryCheckTargets: 'library:checkTargets',
   libraryBulk: 'library:bulk',
