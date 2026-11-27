@@ -10,6 +10,9 @@ qt_add_executable(rancha
   ThemeBridge.cpp
   LibraryModel.h
   LibraryModel.cpp
+  LibraryActions.cpp
+  FolderImport.h
+  FolderImport.cpp
 )
 
 qt_add_qml_module(rancha
@@ -24,6 +27,18 @@ qt_add_qml_module(rancha
     qml/Sidebar.qml
     qml/TopBar.qml
     qml/LookPanel.qml
+    qml/ContentTypeDialog.qml
+    qml/FolderImportDialog.qml
+    qml/CropDialog.qml
+    qml/ItemEditorDialog.qml
+    qml/MoveDialog.qml
+    qml/DeleteDialog.qml
+    qml/BulkTagDialog.qml
+    qml/ItemMenu.qml
+    qml/RMenu.qml
+    qml/RMenuItem.qml
+    qml/RMenuSeparator.qml
+    qml/GameScreen.qml
   RESOURCES
     assets/fonts/poppins-400.woff
     assets/fonts/poppins-500.woff

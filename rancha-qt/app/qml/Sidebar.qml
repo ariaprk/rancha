@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import Rancha
 
 // The left bar: brand, Home / All items / Favorites / Recent, the sections, and Big Picture / Settings / Collapse at the bottom.
-// Only "Home" and the sections work in Q2.1; the other entries are drawn as in the Electron app and get life in later steps.
+// Home, All items, Favorites, Recent and the sections work (Q5); Big Picture is only drawn (Q9).
 Rectangle {
   id: root
   property bool collapsed: false
@@ -119,10 +119,10 @@ Rectangle {
       }
     }
 
-    NavItem { label: "Home"; iconName: "home"; active: LibraryModel.currentId === ""; onClicked: LibraryModel.open("") }
-    NavItem { label: "All items"; iconName: "list" }
-    NavItem { label: "Favorites"; iconName: "star" }
-    NavItem { label: "Recent"; iconName: "clock" }
+    NavItem { label: "Home"; iconName: "home"; active: LibraryModel.viewType === "folder" && LibraryModel.currentId === ""; onClicked: LibraryModel.open("") }
+    NavItem { label: "All items"; iconName: "list"; active: LibraryModel.viewType === "all"; onClicked: LibraryModel.showAll() }
+    NavItem { label: "Favorites"; iconName: "star"; active: LibraryModel.viewType === "favorites"; onClicked: LibraryModel.showFavorites() }
+    NavItem { label: "Recent"; iconName: "clock"; active: LibraryModel.viewType === "recent"; onClicked: LibraryModel.showRecent() }
 
     Text {
       Layout.topMargin: 14

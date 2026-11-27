@@ -4,13 +4,17 @@ import QtQuick.Layouts
 import Rancha
 
 // The top bar: Add, search, tag filter, card size, sort and the three views.
-// Q2.1: Add, search and the tag filter are only drawn (they work in Q4 and Q5); size, sort and views work.
+// Q5: search (Ctrl+K, Esc clears), "only here / everywhere" and the tag filter work.
+// Q4: Add opens a small menu; "Add a folder…" works (adding one item comes with the item editor).
 Rectangle {
   id: root
   property string viewMode: "covers"
   property real cardWidth: 190
   signal viewModeSelected(string mode)
   signal cardWidthSelected(real value)
+  signal addFolderClicked
+  signal addFilesClicked
+  signal createClicked(string kind, bool rom)
 
   implicitHeight: 64
   color: ThemeBridge.glassColor
@@ -51,7 +55,20 @@ Rectangle {
         Icon { anchors.verticalCenter: parent.verticalCenter; name: "plus"; size: 18; lineWidth: 2.2; color: "white" }
         Text { anchors.verticalCenter: parent.verticalCenter; text: "Add"; color: "white"; font.family: ThemeBridge.fontBold; font.weight: Font.Bold; font.pixelSize: 15 }
       }
-      MouseArea { id: addArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor }
+      MouseArea { id: addArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: addMenu.popup(0, parent.height + 4) }
+      RMenu {
+        id: addMenu
+        // as in the Electron app's Toolbar.tsx; adding works while a folder (or Home) is open
+        RMenuItem { text: "New collection…"; enabled: LibraryModel.canAdd; onTriggered: root.createClicked("collection", false) }
+        RMenuItem { text: "PC game or app…"; enabled: LibraryModel.canAdd; onTriggered: root.createClicked("launchable", false) }
+        RMenuItem { text: "Console game (ROM)…"; enabled: LibraryModel.canAdd; onTriggered: root.createClicked("launchable", true) }
+        RMenuItem { text: "Video…"; enabled: LibraryModel.canAdd; onTriggered: root.createClicked("video", false) }
+        RMenuItem { text: "Comic, manga or PDF…"; enabled: LibraryModel.canAdd; onTriggered: root.createClicked("readable", false) }
+        RMenuItem { text: "Music file…"; enabled: LibraryModel.canAdd; onTriggered: root.createClicked("audio", false) }
+        RMenuSeparator {}
+        RMenuItem { text: "Add several files at once…"; enabled: LibraryModel.canAdd; onTriggered: root.addFilesClicked() }
+        RMenuItem { text: "Add a whole folder…"; enabled: LibraryModel.canAdd; onTriggered: root.addFolderClicked() }
+      }
     }
 
     Rectangle {  // search
@@ -76,21 +93,81 @@ Rectangle {
         color: ThemeBridge.text
         font.pixelSize: 14
         background: null
+        // The model clears the search when another place opens; typing sends every change to the model.
+        text: LibraryModel.query
+        onTextEdited: LibraryModel.query = text
+        Keys.onEscapePressed: { LibraryModel.query = ""; focus = false }
       }
+      Shortcut { sequence: "Ctrl+K"; onActivated: { searchField.forceActiveFocus(); searchField.selectAll() } }
     }
 
-    Rectangle {  // tag filter (drawn only)
+    Rectangle {  // search only inside the open folder, or everywhere (shown while searching in a folder)
+      readonly property bool inFolder: LibraryModel.viewType === "folder" && LibraryModel.currentId !== ""
+      visible: inFolder && LibraryModel.query.trim() !== ""
+      implicitWidth: hereText.implicitWidth + 24
+      implicitHeight: 32
+      radius: 16
+      color: LibraryModel.searchHere ? Qt.rgba(ThemeBridge.accentColor.r, ThemeBridge.accentColor.g, ThemeBridge.accentColor.b, 0.25)
+                                     : Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, 0.07)
+      Text {
+        id: hereText
+        anchors.centerIn: parent
+        text: LibraryModel.searchHere ? "Only here" : "Everywhere"
+        color: LibraryModel.searchHere ? ThemeBridge.text : ThemeBridge.textDim
+        font.pixelSize: 13
+      }
+      MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: LibraryModel.searchHere = !LibraryModel.searchHere }
+    }
+
+    Rectangle {  // tag filter: an item must have every chosen tag
       implicitWidth: tagRow.implicitWidth + 28
       implicitHeight: 36
       radius: ThemeBridge.radiusSmall
-      color: Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, 0.07)
+      readonly property int chosen: LibraryModel.selectedTags.length
+      color: chosen > 0 ? Qt.rgba(ThemeBridge.accentColor.r, ThemeBridge.accentColor.g, ThemeBridge.accentColor.b, 0.25)
+                        : Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, tagArea.containsMouse ? 0.12 : 0.07)
       visible: root.width > 900
       Row {
         id: tagRow
         anchors.centerIn: parent
         spacing: 8
-        Text { anchors.verticalCenter: parent.verticalCenter; text: "No tags yet"; color: ThemeBridge.textDim; font.pixelSize: 14 }
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: LibraryModel.allTags.length === 0 ? "No tags yet"
+                : parent.parent.chosen === 0 ? "Tags"
+                : parent.parent.chosen === 1 ? LibraryModel.selectedTags[0]
+                : parent.parent.chosen + " tags"
+          color: parent.parent.chosen > 0 ? ThemeBridge.text : ThemeBridge.textDim
+          font.pixelSize: 14
+        }
         Icon { anchors.verticalCenter: parent.verticalCenter; name: "chevDown"; size: 14; color: ThemeBridge.textDim }
+      }
+      MouseArea {
+        id: tagArea
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        enabled: LibraryModel.allTags.length > 0
+        onClicked: tagMenu.popup()
+      }
+      RMenu {
+        id: tagMenu
+        Instantiator {
+          model: LibraryModel.allTags
+          delegate: RMenuItem {
+            required property var modelData
+            // not "checkable": a click would replace the binding below
+            showCheck: true
+            on: LibraryModel.selectedTags.indexOf(modelData.tag) >= 0
+            text: modelData.tag
+            hint: String(modelData.count)
+            onTriggered: LibraryModel.toggleTag(modelData.tag)
+          }
+          onObjectAdded: (index, object) => tagMenu.insertItem(index, object)
+          onObjectRemoved: (index, object) => tagMenu.removeItem(object)
+        }
+        RMenuSeparator {}
+        RMenuItem { text: "Clear tags"; enabled: LibraryModel.selectedTags.length > 0; onTriggered: LibraryModel.clearTags() }
       }
     }
 
@@ -119,15 +196,15 @@ Rectangle {
         Icon { anchors.verticalCenter: parent.verticalCenter; name: "chevDown"; size: 14; color: ThemeBridge.textDim }
       }
       MouseArea { id: sortArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sortMenu.popup() }
-      Menu {
+      RMenu {
         id: sortMenu
-        MenuItem { text: "Custom order"; onTriggered: LibraryModel.sortMode = "custom" }
-        MenuItem { text: "Name A-Z"; onTriggered: LibraryModel.sortMode = "name" }
-        MenuItem { text: "Name Z-A"; onTriggered: LibraryModel.sortMode = "nameDesc" }
-        MenuItem { text: "Newest added"; onTriggered: LibraryModel.sortMode = "added" }
-        MenuItem { text: "Oldest added"; onTriggered: LibraryModel.sortMode = "addedOld" }
-        MenuItem { text: "Recently opened"; onTriggered: LibraryModel.sortMode = "opened" }
-        MenuItem { text: "Type"; onTriggered: LibraryModel.sortMode = "type" }
+        RMenuItem { text: "Custom order"; showCheck: true; on: LibraryModel.sortMode === "custom"; onTriggered: LibraryModel.sortMode = "custom" }
+        RMenuItem { text: "Name A-Z"; showCheck: true; on: LibraryModel.sortMode === "name"; onTriggered: LibraryModel.sortMode = "name" }
+        RMenuItem { text: "Name Z-A"; showCheck: true; on: LibraryModel.sortMode === "nameDesc"; onTriggered: LibraryModel.sortMode = "nameDesc" }
+        RMenuItem { text: "Newest added"; showCheck: true; on: LibraryModel.sortMode === "added"; onTriggered: LibraryModel.sortMode = "added" }
+        RMenuItem { text: "Oldest added"; showCheck: true; on: LibraryModel.sortMode === "addedOld"; onTriggered: LibraryModel.sortMode = "addedOld" }
+        RMenuItem { text: "Recently opened"; showCheck: true; on: LibraryModel.sortMode === "opened"; onTriggered: LibraryModel.sortMode = "opened" }
+        RMenuItem { text: "Type"; showCheck: true; on: LibraryModel.sortMode === "type"; onTriggered: LibraryModel.sortMode = "type" }
       }
     }
 

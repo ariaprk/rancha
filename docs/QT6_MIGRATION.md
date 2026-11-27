@@ -373,22 +373,25 @@ Not verified: anything on KDE Wayland with a visible window, the `.woff` fonts o
 
 ### 14.4 Roadmap (what is left)
 
-| # | Work | Aria's step | Section 12 step | Main Electron sources |
-| --- | --- | --- | --- | --- |
-| R0 | Housekeeping: branch `port` from `collab`, commit `rancha-qt/` (without the log), add `qt-ci.yml` (Linux + Windows, Qt 6.8 pinned), check Q2.1 on Arch/KDE and Windows | Q1/Q2 close-out | 5 | — |
-| R1 | Data and storage: data folder path, SQLite schema v11 + all migrations v1–v11, backup before upgrade, refuse newer databases, `ItemRepository`, `settings.json` with the full `sanitizeSettings`, import of a real library | Q3 | 7, 8 | `db/database.ts`, `db/itemRepository.ts`, `settingsStore.ts`, `shared/settings.ts`, `validate.ts` |
-| R2 | Add / edit / delete / move, folders and collections, covers + crop, folder import with tree preview, drag files in, multi-select, bulk tags, context menus with hints | Q4 | 9 (part), 11 | `ItemDialog.tsx`, `covers.ts`, `cropMath.ts`, `folderScan.ts`, `scanTree.ts`, `selection.ts`, `reorderDrag.ts`, `ContextMenu.tsx` |
-| R3 | Search, tag filter, sorting, All items / Favorites / Recent, forward history | Q5 | 11 | `libraryQuery.ts`, `App.tsx` |
-| R4 | Launching games/apps, `.desktop`/`.lnk`, missing files, protected main sections, game screen with wallpaper | Q6 | 9 (part), 14 | `launcher.ts`, `platformLaunch.ts` |
-| R5 | Settings page, backup and restore | Q7 | 8 (part), 16 | `SettingsPage.tsx`, `backup.ts` |
-| R6 | Readers: CBZ/CBR/image folders, PDF (QtPdf), RTL, double page, flip, chapters, progress | Q8 | 9 (part), 14 | `reader/*`, `pdfBook.ts`, `chapterTarget.ts` |
-| R7 | Big Picture, then gamepad (SDL) | Q9 | 15 | `BigPicture.tsx`, `gamepad.ts`, `bigPicture.ts` |
-| R8 | Online artwork (SteamGridDB, TMDB, AniList, TVmaze), automatic covers | Q10 | 9 (part), 16 | `onlineArt.ts`, `steamGridDb.ts`, `autoCovers.ts` |
-| R9 | Emulators and ROM folders | Q11 | 9 (part) | `emulatorLaunch.ts`, `shared/emulators.ts` |
-| R10 | Music: libmpv audio handle (gapless), TagLib tags + covers, index-based queue with duplicates, middle-click to queue, three resizable panes, resizable/sortable columns, mini player, MPRIS/SMTC | Q12 | 13 | section 8; `usePlayer.ts`, `MusicPage.tsx`, `MusicList.tsx`, `musicColumns.ts`, `musicTags*.ts` |
-| R11 | Video: libmpv inside the window, tracks, ASS, subtitles finder, shortcuts, next/previous, auto-next, 90 % = watched, new resume storage | Q13 | 6, 12 | section 7; deleted files: `git show aa012f7:<path>` |
-| R12 | Packaging: Windows installer + portable (Windows 10+), AppImage, Arch PKGBUILD with our LGPL libmpv, new `release.yml`, README, notices, release notes 2.0.0 | Q14 | 17 | section 10 |
-| R13 | Replace Electron: merge `qt6` → `collab` → `main`, remove Electron files, test on real data on both systems, tag `v2.0.0` | — | 18, 19 | section 10 |
+Finished rows stay in the table and are marked **Done (انجام شده)** in the Status column, so Aria, the owner and every
+Claude session can see where things stand. Details of each step (what was verified and what was not): `rancha-qt/docs/STATUS.md`.
+
+| # | Status | Work | Aria's step | Section 12 step | Main Electron sources |
+| --- | --- | --- | --- | --- | --- |
+| R0 | **Done (انجام شده)**, except the look of Q2.1 on KDE / Windows | Housekeeping: branch `port` from `collab`, commit `rancha-qt/` (without the log), add `qt-ci.yml` (Linux + Windows, Qt 6.8 pinned), check Q2.1 on Arch/KDE and Windows | Q1/Q2 close-out | 5 | — |
+| R1 | **Done (انجام شده)**, except `Backup` (moved to R5) | Data and storage: data folder path, SQLite schema v11 + all migrations v1–v11, backup before upgrade, refuse newer databases, `ItemRepository`, `settings.json` with the full `sanitizeSettings`, import of a real library | Q3 | 7, 8 | `db/database.ts`, `db/itemRepository.ts`, `settingsStore.ts`, `shared/settings.ts`, `validate.ts` |
+| R2 | **Done (انجام شده)**, waiting for a look on screen; sidebar / breadcrumb drop targets left for later | Add / edit / delete / move, folders and collections, covers + crop, folder import with tree preview, drag files in, multi-select, bulk tags, context menus with hints | Q4 | 9 (part), 11 | `ItemDialog.tsx`, `covers.ts`, `cropMath.ts`, `folderScan.ts`, `scanTree.ts`, `selection.ts`, `reorderDrag.ts`, `ContextMenu.tsx` |
+| R3 | **Done (انجام شده)** | Search, tag filter, sorting, All items / Favorites / Recent, forward history | Q5 | 11 | `libraryQuery.ts`, `App.tsx` |
+| R4 |  | Launching games/apps, `.desktop`/`.lnk`, missing files, protected main sections, game screen with wallpaper | Q6 | 9 (part), 14 | `launcher.ts`, `platformLaunch.ts` |
+| R5 |  | Settings page, backup and restore | Q7 | 8 (part), 16 | `SettingsPage.tsx`, `backup.ts` |
+| R6 |  | Readers: CBZ/CBR/image folders, PDF (QtPdf), RTL, double page, flip, chapters, progress | Q8 | 9 (part), 14 | `reader/*`, `pdfBook.ts`, `chapterTarget.ts` |
+| R7 |  | Big Picture, then gamepad (SDL) | Q9 | 15 | `BigPicture.tsx`, `gamepad.ts`, `bigPicture.ts` |
+| R8 |  | Online artwork (SteamGridDB, TMDB, AniList, TVmaze), automatic covers | Q10 | 9 (part), 16 | `onlineArt.ts`, `steamGridDb.ts`, `autoCovers.ts` |
+| R9 |  | Emulators and ROM folders | Q11 | 9 (part) | `emulatorLaunch.ts`, `shared/emulators.ts` |
+| R10 |  | Music: libmpv audio handle (gapless), TagLib tags + covers, index-based queue with duplicates, middle-click to queue, three resizable panes, resizable/sortable columns, mini player, MPRIS/SMTC | Q12 | 13 | section 8; `usePlayer.ts`, `MusicPage.tsx`, `MusicList.tsx`, `musicColumns.ts`, `musicTags*.ts` |
+| R11 |  | Video: libmpv inside the window, tracks, ASS, subtitles finder, shortcuts, next/previous, auto-next, 90 % = watched, new resume storage | Q13 | 6, 12 | section 7; deleted files: `git show aa012f7:<path>` |
+| R12 |  | Packaging: Windows installer + portable (Windows 10+), AppImage, Arch PKGBUILD with our LGPL libmpv, new `release.yml`, README, notices, release notes 2.0.0 | Q14 | 17 | section 10 |
+| R13 |  | Replace Electron: merge `qt6` → `collab` → `main`, remove Electron files, test on real data on both systems, tag `v2.0.0` | — | 18, 19 | section 10 |
 
 Still open from Phase A: **3b** (check the license facts of section 9 against official sources; needs internet).
 

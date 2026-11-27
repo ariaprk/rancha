@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Rancha
 
 // One item as a card (like the Electron app): a cover with a soft gradient, a faint kind icon and the initials,
@@ -15,9 +16,17 @@ Item {
   required property color glowColor
   required property bool isFolder
   required property bool isFavorite
+  required property bool isSelected
+  required property bool isMissing  // its file or folder was not found
   property bool compact: false
-  signal activated
+  signal activated                              // double-click (a folder: one click)
+  signal clicked(bool ctrl, bool shift)         // select
+  signal menuRequested                          // right-click
   signal favoriteToggled
+  // drag-to-reorder: positions are in window coordinates; Main.qml moves the ghost and places the items
+  signal dragStarted(real x, real y)
+  signal dragMoved(real x, real y)
+  signal dragEnded
 
   readonly property string iconName: kind === "collection" ? "folder" : kind === "video" ? "film"
                                     : kind === "readable" ? "book" : kind === "audio" ? "note" : "play"
@@ -36,6 +45,9 @@ Item {
       height: root.compact ? width : width * 1.5
       radius: ThemeBridge.radius
       clip: true
+      // a missing file: grayscale(.85) brightness(.7)
+      layer.enabled: root.isMissing
+      layer.effect: MultiEffect { saturation: -0.85; brightness: -0.3 }
       gradient: Gradient {
         GradientStop { position: 0.0; color: root.topColor }
         GradientStop { position: 1.0; color: root.bottomColor }
@@ -69,9 +81,9 @@ Item {
         anchors.fill: parent
         radius: parent.radius
         color: "transparent"
-        border.width: 2
+        border.width: root.isSelected ? 3 : 2
         border.color: ThemeBridge.accentColor
-        opacity: mouse.containsMouse ? 1 : 0
+        opacity: mouse.containsMouse || root.isSelected ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: ThemeBridge.fastMs } }
       }
       Rectangle {  // favorite badge
@@ -98,6 +110,26 @@ Item {
       }
     }
 
+    Rectangle {  // "Missing": the file was not found
+      visible: root.isMissing
+      anchors.left: cover.left
+      anchors.bottom: cover.bottom
+      anchors.margins: 8
+      width: missingText.implicitWidth + 16
+      height: missingText.implicitHeight + 4
+      radius: height / 2
+      color: "#ffb454"
+      Text {
+        id: missingText
+        anchors.centerIn: parent
+        text: "Missing"
+        color: "#2b1500"
+        font.pixelSize: 11
+        font.weight: Font.Bold
+        font.letterSpacing: 0.33
+      }
+    }
+
     Column {
       anchors.top: cover.bottom
       anchors.topMargin: 10
@@ -109,7 +141,7 @@ Item {
       Text {
         width: parent.width
         text: root.name
-        color: ThemeBridge.text
+        color: root.isMissing ? ThemeBridge.textDim : ThemeBridge.text
         elide: Text.ElideRight
         font.family: ThemeBridge.fontBold
         font.weight: Font.DemiBold
@@ -131,7 +163,33 @@ Item {
       z: -1
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onClicked: root.activated()
+      acceptedButtons: Qt.LeftButton | Qt.RightButton
+      preventStealing: true  // a drag moves the card, it does not scroll the grid
+      // Pressing and moving 6 px lifts the card (drag-to-reorder); the click that ends a drag is ignored.
+      property point pressPoint
+      property bool dragging: false
+      property bool justDragged: false
+      onPressed: (event) => { pressPoint = Qt.point(event.x, event.y); dragging = false; justDragged = false }
+      onPositionChanged: (event) => {
+        if (!(event.buttons & Qt.LeftButton)) return
+        const at = mapToItem(null, event.x, event.y)
+        if (dragging) { root.dragMoved(at.x, at.y); return }
+        if (Math.abs(event.x - pressPoint.x) + Math.abs(event.y - pressPoint.y) < 6) return
+        dragging = true
+        root.dragStarted(at.x, at.y)
+      }
+      onReleased: if (dragging) { dragging = false; justDragged = true; root.dragEnded() }
+      onCanceled: if (dragging) { dragging = false; root.dragEnded() }
+      // As in the Electron app: a click selects (a folder opens), a double-click opens, Ctrl / Shift add to the selection.
+      onClicked: (event) => {
+        if (justDragged) { justDragged = false; return }
+        if (event.button === Qt.RightButton) { root.menuRequested(); return }
+        const ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+        const shift = (event.modifiers & Qt.ShiftModifier) !== 0
+        if (root.isFolder && !ctrl && !shift) root.activated()
+        else root.clicked(ctrl, shift)
+      }
+      onDoubleClicked: (event) => { if (event.button === Qt.LeftButton && !root.isFolder) root.activated() }
     }
   }
 }

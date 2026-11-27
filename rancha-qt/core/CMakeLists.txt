@@ -5,6 +5,13 @@ add_library(rancha_core STATIC
   src/theme.cpp
   src/cover.cpp
   src/library_view.cpp
+  src/library_query.cpp
+  src/file_kinds.cpp
+  src/launch.cpp
+  src/folder_scan.cpp
+  src/scan_tree.cpp
+  src/reorder_math.cpp
+  src/cover_store.cpp
   src/sample_library.cpp
   src/stress_library.cpp
   src/database.cpp
