@@ -8,7 +8,6 @@ import { IPC } from '../shared/ipc'
 import { pageUrl } from '../shared/reader'
 import type { SongInfo } from '../shared/types'
 import type {
-  SubtitleFile,
   AppInfo,
   BackupInfo,
   BackupResult,
@@ -59,7 +58,7 @@ const api = {
       ipcRenderer.invoke(IPC.libraryReorder, id, direction),
     importPaths: (parentId: string | null, paths: string[]): Promise<ImportResult> =>
       ipcRenderer.invoke(IPC.libraryImportPaths, parentId, paths),
-    open: (id: string, external?: boolean): Promise<OpenResult> => ipcRenderer.invoke(IPC.libraryOpen, id, external === true),
+    open: (id: string): Promise<OpenResult> => ipcRenderer.invoke(IPC.libraryOpen, id),
     reveal: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC.libraryReveal, id),
     checkTargets: (): Promise<string[]> => ipcRenderer.invoke(IPC.libraryCheckTargets),
     bulk: (ids: string[], action: BulkAction): Promise<BulkResult> =>
@@ -101,10 +100,6 @@ const api = {
       ipcRenderer.on(IPC.windowMaximizedChanged, listener)
       return () => ipcRenderer.removeListener(IPC.windowMaximizedChanged, listener)
     }
-  },
-  video: {
-    subtitles: (id: string): Promise<SubtitleFile[]> => ipcRenderer.invoke(IPC.videoSubtitles, id),
-    pickSubtitle: (): Promise<SubtitleFile | null> => ipcRenderer.invoke(IPC.videoPickSubtitle)
   },
   dialogs: {
     pickFiles: (): Promise<string[]> => ipcRenderer.invoke(IPC.dialogPickFiles),

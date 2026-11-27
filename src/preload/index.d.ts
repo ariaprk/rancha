@@ -49,7 +49,7 @@ export interface LibraryApi {
     reorder(id: string, direction: ReorderDirection): Promise<void>
     importPaths(parentId: string | null, paths: string[]): Promise<ImportResult>
     /** Launches an app, plays a video in the default player, etc. */
-    open(id: string, external?: boolean): Promise<OpenResult>
+    open(id: string): Promise<OpenResult>
     /** Shows the item's file in Windows Explorer. false = file not found. */
     reveal(id: string): Promise<boolean>
     /** Ids of items whose file or folder no longer exists. */
@@ -86,10 +86,6 @@ export interface LibraryApi {
     setFullscreen(on: boolean): void
     isMaximized(): Promise<boolean>
     onMaximizedChange(callback: (maximized: boolean) => void): () => void
-  }
-  video: {
-    subtitles(id: string): Promise<SubtitleFile[]>
-    pickSubtitle(): Promise<SubtitleFile | null>
   }
   dialogs: {
     pickFiles(): Promise<string[]>
