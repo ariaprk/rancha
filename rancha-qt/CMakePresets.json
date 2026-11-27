@@ -1,0 +1,29 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows",
+      "displayName": "Windows (Visual Studio 2022, x64)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/windows",
+      "cacheVariables": { "CMAKE_PREFIX_PATH": "$env{QT_ROOT_DIR}" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux (Ninja, GCC or Clang)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "CMAKE_PREFIX_PATH": "$env{QT_ROOT_DIR}" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "core-only",
+      "displayName": "Core and tests only (no Qt)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/core-only",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "RANCHA_BUILD_APP": "OFF" }
+    }
+  ]
+}

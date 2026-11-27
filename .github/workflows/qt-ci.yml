@@ -1,0 +1,56 @@
+name: Qt CI
+
+# Builds the Qt rewrite (rancha-qt/) on Windows and Linux and runs the core tests.
+on:
+  push:
+    paths: ['rancha-qt/**', '.github/workflows/qt-ci.yml']
+  pull_request:
+    paths: ['rancha-qt/**', '.github/workflows/qt-ci.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: rancha-qt
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          cache: true
+
+      - name: Install Linux build libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev libegl1
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --preset windows
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --build build/windows --config Release
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: ctest --test-dir build/windows -C Release --output-on-failure
+
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: cmake --preset linux
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: cmake --build build/linux
+
+      - name: Test (Linux)
+        if: runner.os == 'Linux'
+        run: ctest --test-dir build/linux --output-on-failure

@@ -1,0 +1,10 @@
+# Build output (all presets write under build/)
+build/
+# Personal CMake presets and IDE files
+CMakeUserPresets.json
+CMakeLists.txt.user*
+.qtcreator/
+.cache/
+compile_commands.json
+# Logs (for example aqtinstall.log from installing Qt)
+*.log

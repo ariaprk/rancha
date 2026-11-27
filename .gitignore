@@ -4,3 +4,5 @@ dist/
 *.log
 .DS_Store
 release/
+# Personal editor settings (they hold paths of this PC)
+.vscode/
