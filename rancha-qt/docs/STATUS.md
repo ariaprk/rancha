@@ -136,3 +136,23 @@
   sidebar and the breadcrumbs are not drop targets yet.
 - What to check: Add > Add a folder… at Home and inside a section, try each content choice, tick / untick folders,
   search the list, "One plain list" and "new collection", Add, then add the same folder again ("already in library").
+
+## Q2.2 - own window frame and closer look (2026-11-28, Aria's Claude) - WRITTEN, core tested, app NOT compiled
+
+Based on `origin/port` (89139af, includes Q3-Q5 by MrJavadGG's Claude). Checked against `docs/ELECTRON_FEATURES.md`.
+- Window: no system frame (`Qt.FramelessWindowHint`); ONE 48 px bar = title bar + toolbar (`TopBar.qml`), the sidebar brand row is 48 px too.
+  Own minimize / maximize-restore / close buttons (`WindowControls.qml`: 38 x 30, hover tint, red close that turns a quarter),
+  empty parts of the bar and the brand row move the window and double-click maximizes (`DragArea.qml`), resizing from the edges and
+  corners (`ResizeEdges.qml`, `startSystemResize`), the game screen carries its own buttons. Minimum window 900 x 600.
+- Look: no separator lines (sidebar edge, bar bottom), solid calm sidebar tone per theme, Add button always green (#2fd37a to #14a455),
+  search box as frosted glass (no real blur yet), controls 32 px high, size slider only above 1400 px window width.
+- Cards: gaps like Electron (22 px across, 26 down; compact 15 and 17), no kind label under the name (only folders say "N items"),
+  names wrap to 2 lines when there is no second line (bold, 20 px lines), text block 40 px (compact 20 px).
+- Core: the placeholder cover colors are the calmer final ones of the Electron CSS (top hsl(h,34%,36%), bottom hsl(h+24,32%,20%),
+  glow hsl(h,42%,52%,0.5)); the old numbers were from an earlier CSS rule. `tests/test_color_theme.cpp` updated.
+- VERIFIED: core builds, all tests pass (g++, ctest, no Qt needed).
+- NOT VERIFIED (no Qt in the sandbox, never compiled or run): all QML/C++ in `app/`. Risks: window dragging and resizing on KDE Wayland / X11 /
+  Windows 11 (the Win11 snap-layout flyout is gone with a frameless window, as in Electron), `DragHandler` + `TapHandler` behind buttons,
+  Shape icon rendering, `Window.window` bindings. The window position and size are not remembered yet (`window.json`, later).
+- What to check: the window opens without the system bar; drag it by the empty bar and by the "Rancha" row; double-click maximizes;
+  minimize / maximize / close work; resize from every edge and corner; cards look like the Electron ones; open a game (game screen has buttons).

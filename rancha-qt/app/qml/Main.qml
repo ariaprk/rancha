@@ -8,8 +8,10 @@ ApplicationWindow {
   id: window
   width: 1280
   height: 800
-  minimumWidth: 760
-  minimumHeight: 480
+  minimumWidth: 900
+  minimumHeight: 600
+  // No frame of its own: the title bar and the toolbar are ONE slim bar (TopBar), with our own window buttons.
+  flags: Qt.Window | Qt.FramelessWindowHint
   visible: true
   title: "Rancha"
   color: ThemeBridge.bg
@@ -31,6 +33,12 @@ ApplicationWindow {
     acceptedButtons: Qt.BackButton | Qt.ForwardButton
     onClicked: (mouse) => mouse.button === Qt.BackButton ? LibraryModel.back() : LibraryModel.forward()
   }
+
+  ResizeEdges { anchors.fill: parent; z: 2000 }
+
+  // space around a card (half of the Electron grid gaps: 22 px across, 26 px down; compact 15 and 17)
+  readonly property real cardInsetX: viewMode === "compact" ? 7.5 : 11
+  readonly property real cardInsetY: viewMode === "compact" ? 8.5 : 13
 
   // soft light and shade behind everything (values come from the core)
   Rectangle {
@@ -275,12 +283,13 @@ ApplicationWindow {
       const d = row >= 0 ? v.itemAtIndex(row) : null
       if (!d) { bar.visible = false; hotBox.visible = false; return }
       const tl = d.mapToItem(reorderDrag, 0, 0)
-      const inset = window.viewMode === "list" ? 0 : 9  // the card's own margins
+      const insetX = window.viewMode === "list" ? 0 : window.cardInsetX  // the card's own margins
+      const insetY = window.viewMode === "list" ? 0 : window.cardInsetY
       if (hotRow >= 0) {
         bar.visible = false
         hotBox.visible = true
-        hotBox.x = tl.x + inset; hotBox.y = tl.y + inset
-        hotBox.width = d.width - 2 * inset; hotBox.height = d.height - 2 * inset
+        hotBox.x = tl.x + insetX; hotBox.y = tl.y + insetY
+        hotBox.width = d.width - 2 * insetX; hotBox.height = d.height - 2 * insetY
       } else {
         hotBox.visible = false
         bar.visible = true
@@ -288,8 +297,8 @@ ApplicationWindow {
           bar.width = d.width; bar.height = 3
           bar.x = tl.x; bar.y = (after ? tl.y + d.height : tl.y) - 2
         } else {
-          bar.width = 4; bar.height = d.height - 2 * inset
-          bar.x = (after ? tl.x + d.width : tl.x) - 2; bar.y = tl.y + inset
+          bar.width = 4; bar.height = d.height - 2 * insetY
+          bar.x = (after ? tl.x + d.width : tl.x) - 2; bar.y = tl.y + insetY
         }
       }
     }
@@ -496,14 +505,16 @@ ApplicationWindow {
           readonly property real wanted: compactView ? window.cardWidth * 0.62 : window.cardWidth
           readonly property int columns: Math.max(1, Math.floor(width / wanted))
           cellWidth: Math.floor(width / columns)
-          // cover (2:3, or square when compact) + the text under it
-          cellHeight: (cellWidth - 18) * (compactView ? 1.0 : 1.5) + 18 + (compactView ? 34 : 54)
+          // cover (2:3, or square when compact) + 10 px + the text block (40 px; compact 20) + the gaps around the card
+          cellHeight: (cellWidth - 2 * window.cardInsetX) * (compactView ? 1.0 : 1.5) + 2 * window.cardInsetY + 10 + (compactView ? 20 : 40)
           ScrollBar.vertical: ScrollBar {}
           delegate: CoverCard {
             required property int index
             width: grid.cellWidth
             height: grid.cellHeight
             compact: grid.compactView
+            insetX: window.cardInsetX
+            insetY: window.cardInsetY
             onActivated: LibraryModel.openRow(index)
             onClicked: (ctrl, shift) => LibraryModel.clickRow(index, ctrl, shift)
             onMenuRequested: itemMenu.popupFor(index)
@@ -529,6 +540,7 @@ ApplicationWindow {
           delegate: Rectangle {
             required property int index
             required property string name
+            required property string kind
             required property string initials
             required property string subtitle
             required property color topColor
@@ -602,7 +614,7 @@ ApplicationWindow {
             }
             Text {
               anchors.right: star.left; anchors.rightMargin: 20; anchors.verticalCenter: parent.verticalCenter
-              text: subtitle; color: ThemeBridge.textDim; font.pixelSize: 13
+              text: subtitle !== "" ? subtitle : LibraryModel.kindLabel(kind); color: ThemeBridge.textDim; font.pixelSize: 13
             }
             Item {
               id: star

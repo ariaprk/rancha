@@ -250,6 +250,8 @@ Item {
       }
     }
 
+    DragArea { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; height: 48 }  // move the window
+
     // ---- the buttons and text; they rise into place one after another (0, 90 and 170 ms later)
     Item {
       id: ui
@@ -286,6 +288,13 @@ Item {
         }
         FocusRing { visible: backButton.visualFocus }
         HoverHandler { cursorShape: Qt.PointingHandCursor }
+      }
+
+      WindowControls {  // the window has no frame of its own, so the screen carries its own buttons (as in Electron)
+        anchors.right: parent.right
+        anchors.top: parent.top
+        opacity: root.shown ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: root.ms(520); easing.type: Easing.OutCubic } }
       }
 
       Column {

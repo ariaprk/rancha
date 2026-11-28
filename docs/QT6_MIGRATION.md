@@ -332,6 +332,7 @@ Progress: **6 of 20** (1, 2, 3a, 4, 5, 7), step 8 mostly done. Steps 10 and 11 a
 - 2026-11-27: answers to O1–O4: SQLite + nlohmann/json in `core/` (both added: system SQLite on Linux, the 3.54.1 amalgamation in `third_party/sqlite/` for Windows, json 3.12.0 with a checked signature); branch `port`, the owner makes the commits; libmpv prototype only at Q13; `aqtinstall.log` ignored and `qt-ci.yml` moved by us.
 - 2026-11-27: R0 and R1 (Q3) done by Claude, except `Backup` (with R5) and the visual checks. See `rancha-qt/docs/STATUS.md`, Q3.
 - 2026-11-27: Aria's `rancha-qt/` copied into the repo folder (not in git yet). Analysed by Claude; results and roadmap in section 14. Step 3b (license check) still waits for a working internet connection.
+- 2026-11-28: Aria's Claude synced with `origin/port` (89139af) and added Q2.2: frameless window with own 48 px bar and buttons, no separator lines, calmer cover colors, card gaps and names as in Electron. New checklist of every Electron feature and owner decision: `rancha-qt/docs/ELECTRON_FEATURES.md`. App part not compiled (see `rancha-qt/docs/STATUS.md`, Q2.2).
 
 ---
 

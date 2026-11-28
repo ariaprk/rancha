@@ -88,7 +88,8 @@ void testColorTheme() {
 
   // covers
   const CoverColors c = coverColors(265);
-  CHECK(same(c.top, 96, 41, 174) && c.glow.a == 0.55);
+  CHECK(same(c.bottom, 61, 35, 67) && same(c.glow, 124, 81, 184));
+  CHECK(same(c.top, 87, 61, 123) && c.glow.a == 0.50);  // the calmer (desaturated) placeholder of the Electron app
   CHECK(initials("Starfall Chronicles") == "SC");
   CHECK(initials("  moonlit   vale  ") == "MV");
   CHECK(initials("Episode 1 and more") == "E1");

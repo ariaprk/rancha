@@ -11,15 +11,11 @@ Rectangle {
 
   implicitWidth: collapsed ? 72 : 250
   Behavior on implicitWidth { NumberAnimation { duration: ThemeBridge.medMs; easing.type: Easing.OutCubic } }
-  color: ThemeBridge.glassColor
+  // one calm solid tone per theme, no blur and NO separator lines (the Electron app removed them all)
+  color: ThemeBridge.mode === "dark" ? "#14171e" : ThemeBridge.mode === "light" ? "#f5f7fb" : Qt.rgba(1, 1, 1, 0.78)
   clip: true
 
-  Rectangle {  // right edge line
-    anchors.right: parent.right
-    width: 1
-    height: parent.height
-    color: ThemeBridge.glassBorder
-  }
+  DragArea { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; height: 48 }  // the brand row moves the window
 
   readonly property var sectionIcons: ({
     "games": "video-game", "reading": "book", "video": "play", "apps": "apps", "music": "music"
@@ -94,11 +90,13 @@ Rectangle {
   ColumnLayout {
     anchors.fill: parent
     anchors.margins: 11
+    anchors.topMargin: 0
     spacing: 2
 
-    RowLayout {  // brand
-      Layout.preferredHeight: 52
-      Layout.leftMargin: 6
+    RowLayout {  // brand: as tall as the title bar (48 px)
+      Layout.preferredHeight: 48
+      Layout.bottomMargin: 10
+      Layout.leftMargin: 11
       spacing: 10
       Rectangle {
         width: 26
@@ -114,7 +112,7 @@ Rectangle {
         color: ThemeBridge.text
         font.family: ThemeBridge.fontBold
         font.weight: Font.Bold
-        font.pixelSize: 21
+        font.pixelSize: 20
         visible: !root.collapsed
       }
     }

@@ -46,9 +46,9 @@ std::string upperChar(std::string_view c) {
 
 CoverColors coverColors(int hue) {
   CoverColors c;
-  c.top = fromHsl(hue, 0.62, 0.42);
-  c.bottom = fromHsl(hue + 38, 0.60, 0.20);
-  c.glow = fromHsl(hue, 0.80, 0.62, 0.55);
+  c.top = fromHsl(hue, 0.34, 0.36);
+  c.bottom = fromHsl(hue + 24, 0.32, 0.20);
+  c.glow = fromHsl(hue, 0.42, 0.52, 0.50);
   return c;
 }
 

@@ -16,15 +16,12 @@ Rectangle {
   signal addFilesClicked
   signal createClicked(string kind, bool rom)
 
-  implicitHeight: 64
-  color: ThemeBridge.glassColor
+  // This bar IS the top of the window (title bar and toolbar in one, 48 px, like the Electron app): no frame of
+  // the system, our own window buttons at the right end, and no line under it.
+  implicitHeight: 48
+  color: "transparent"
 
-  Rectangle {  // bottom line
-    anchors.bottom: parent.bottom
-    width: parent.width
-    height: 1
-    color: ThemeBridge.glassBorder
-  }
+  DragArea { anchors.fill: parent }  // empty parts move the window; double-click maximizes
 
   readonly property var sortNames: ({
     "custom": "Custom order", "name": "Name A-Z", "nameDesc": "Name Z-A", "added": "Newest added",
@@ -34,17 +31,17 @@ Rectangle {
   RowLayout {
     anchors.fill: parent
     anchors.leftMargin: 20
-    anchors.rightMargin: 20
-    spacing: 12
+    anchors.rightMargin: 8
+    spacing: 10
 
     Rectangle {  // Add
-      implicitWidth: addRow.implicitWidth + 32
+      implicitWidth: addRow.implicitWidth + 30
       implicitHeight: 38
       radius: 19
+      // "a clear, fresh green button (the one thing that always stands out)": the same in every theme
       gradient: Gradient {
-        orientation: Gradient.Horizontal
-        GradientStop { position: 0.0; color: ThemeBridge.accentFrom }
-        GradientStop { position: 1.0; color: ThemeBridge.accentTo }
+        GradientStop { position: 0.0; color: "#2fd37a" }
+        GradientStop { position: 1.0; color: "#14a455" }
       }
       scale: addArea.containsMouse ? 1.03 : 1.0
       Behavior on scale { NumberAnimation { duration: ThemeBridge.fastMs } }
@@ -52,7 +49,11 @@ Rectangle {
         id: addRow
         anchors.centerIn: parent
         spacing: 6
-        Icon { anchors.verticalCenter: parent.verticalCenter; name: "plus"; size: 18; lineWidth: 2.2; color: "white" }
+        Icon {
+          anchors.verticalCenter: parent.verticalCenter; name: "plus"; size: 18; lineWidth: 2.8; color: "white"
+          rotation: addArea.containsMouse ? 90 : 0
+          Behavior on rotation { NumberAnimation { duration: ThemeBridge.medMs; easing.type: Easing.OutBack } }
+        }
         Text { anchors.verticalCenter: parent.verticalCenter; text: "Add"; color: "white"; font.family: ThemeBridge.fontBold; font.weight: Font.Bold; font.pixelSize: 15 }
       }
       MouseArea { id: addArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: addMenu.popup(0, parent.height + 4) }
@@ -75,11 +76,15 @@ Rectangle {
       Layout.fillWidth: true
       Layout.maximumWidth: 440
       Layout.minimumWidth: 140
-      implicitHeight: 38
-      radius: 19
-      color: Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, searchField.activeFocus ? 0.10 : 0.07)
-      border.width: searchField.activeFocus ? 1 : 0
-      border.color: ThemeBridge.accentColor
+      implicitHeight: 32
+      radius: 16
+      // frosted glass in every theme; clicking it does not change its color (as in Electron). No real blur yet.
+      gradient: Gradient {
+        GradientStop { position: 0.0; color: ThemeBridge.isDark ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(1, 1, 1, ThemeBridge.mode === "airy" ? 0.80 : 0.85) }
+        GradientStop { position: 1.0; color: ThemeBridge.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, ThemeBridge.mode === "airy" ? 0.45 : 0.50) }
+      }
+      border.width: 1
+      border.color: ThemeBridge.isDark ? Qt.rgba(1, 1, 1, 0.22) : Qt.rgba(1, 1, 1, 0.95)
       Icon { id: searchIcon; x: 12; anchors.verticalCenter: parent.verticalCenter; name: "search"; size: 18; color: ThemeBridge.textDim }
       TextField {
         id: searchField
@@ -121,7 +126,7 @@ Rectangle {
 
     Rectangle {  // tag filter: an item must have every chosen tag
       implicitWidth: tagRow.implicitWidth + 28
-      implicitHeight: 36
+      implicitHeight: 32
       radius: ThemeBridge.radiusSmall
       readonly property int chosen: LibraryModel.selectedTags.length
       color: chosen > 0 ? Qt.rgba(ThemeBridge.accentColor.r, ThemeBridge.accentColor.g, ThemeBridge.accentColor.b, 0.25)
@@ -173,8 +178,8 @@ Rectangle {
 
     Item { Layout.fillWidth: true }
 
-    Slider {  // card size
-      visible: root.width > 1000
+    Slider {  // card size: hidden below 1400 px (Poppins is wide); the same setting will be in Settings
+      visible: Window.window !== null && Window.window.width > 1400
       implicitWidth: 150
       from: 130
       to: 280
@@ -184,7 +189,7 @@ Rectangle {
 
     Rectangle {  // sort
       implicitWidth: sortRow.implicitWidth + 28
-      implicitHeight: 36
+      implicitHeight: 32
       radius: ThemeBridge.radiusSmall
       color: sortArea.containsMouse ? Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, 0.12)
                                     : Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, 0.07)
@@ -210,7 +215,7 @@ Rectangle {
 
     Rectangle {  // the three views
       implicitWidth: 3 * 36 + 8
-      implicitHeight: 38
+      implicitHeight: 32
       radius: ThemeBridge.radiusSmall + 2
       color: Qt.rgba(ThemeBridge.text.r, ThemeBridge.text.g, ThemeBridge.text.b, 0.07)
       Row {
@@ -221,7 +226,7 @@ Rectangle {
           delegate: Rectangle {
             required property var modelData
             width: 36
-            height: 30
+            height: 26
             radius: ThemeBridge.radiusSmall
             gradient: Gradient {
               orientation: Gradient.Horizontal
@@ -234,5 +239,7 @@ Rectangle {
         }
       }
     }
+
+    WindowControls { Layout.leftMargin: 6 }
   }
 }

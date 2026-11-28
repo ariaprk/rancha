@@ -22,6 +22,9 @@ qt_add_qml_module(rancha
     qml/Main.qml
     qml/CoverCard.qml
     qml/Chip.qml
+    qml/DragArea.qml
+    qml/ResizeEdges.qml
+    qml/WindowControls.qml
     qml/Icon.qml
     qml/SectionIcon.qml
     qml/Sidebar.qml

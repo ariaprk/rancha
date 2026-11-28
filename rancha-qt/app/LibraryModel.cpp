@@ -78,13 +78,7 @@ QVariant LibraryModel::data(const QModelIndex& index, int role) const {
         const int n = it == counts_.end() ? 0 : it->second;
         return n == 1 ? QStringLiteral("1 item") : QStringLiteral("%1 items").arg(n);
       }
-      switch (item.kind) {
-        case rancha::ItemKind::Launchable: return QStringLiteral("App / Game");
-        case rancha::ItemKind::Video: return QStringLiteral("Video");
-        case rancha::ItemKind::Readable: return QStringLiteral("Reading");
-        case rancha::ItemKind::Audio: return QStringLiteral("Music");
-        default: return QString();
-      }
+      return QString();  // the Electron cards show NO kind label (owner's choice); only folders say "N items"
     }
     default: return {};
   }

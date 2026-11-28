@@ -19,6 +19,8 @@ Item {
   required property bool isSelected
   required property bool isMissing  // its file or folder was not found
   property bool compact: false
+  property real insetX: compact ? 7.5 : 11   // half of the column gap (22 px; compact 15 px)
+  property real insetY: compact ? 8.5 : 13   // half of the row gap (26 px; compact 17 px)
   signal activated                              // double-click (a folder: one click)
   signal clicked(bool ctrl, bool shift)         // select
   signal menuRequested                          // right-click
@@ -34,7 +36,10 @@ Item {
   Item {
     id: card
     anchors.fill: parent
-    anchors.margins: 9
+    anchors.leftMargin: root.insetX
+    anchors.rightMargin: root.insetX
+    anchors.topMargin: root.insetY
+    anchors.bottomMargin: root.insetY
     scale: mouse.containsMouse ? ThemeBridge.hoverScale : 1.0
     Behavior on scale { NumberAnimation { duration: ThemeBridge.fastMs; easing.type: Easing.OutCubic } }
 
@@ -130,30 +135,38 @@ Item {
       }
     }
 
-    Column {
+    Column {  // the text block: 40 px high; a name with no second line may wrap onto two lines (then "...")
       anchors.top: cover.bottom
       anchors.topMargin: 10
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.leftMargin: 2
       anchors.rightMargin: 2
-      spacing: 2
+      height: root.compact ? 20 : 40
+      clip: true
+      spacing: 0
       Text {
         width: parent.width
         text: root.name
         color: root.isMissing ? ThemeBridge.textDim : ThemeBridge.text
+        wrapMode: root.compact || root.subtitle !== "" ? Text.NoWrap : Text.WrapAnywhere
+        maximumLineCount: root.compact || root.subtitle !== "" ? 1 : 2
         elide: Text.ElideRight
+        lineHeightMode: Text.FixedHeight
+        lineHeight: root.compact ? 18 : 20
         font.family: ThemeBridge.fontBold
-        font.weight: Font.DemiBold
+        font.weight: Font.Bold
         font.pixelSize: root.compact ? 12 : 15
       }
       Text {
         width: parent.width
-        visible: !root.compact
+        visible: !root.compact && root.subtitle !== ""
         text: root.subtitle
         color: ThemeBridge.textDim
         elide: Text.ElideRight
-        font.pixelSize: 12
+        lineHeightMode: Text.FixedHeight
+        lineHeight: 18
+        font.pixelSize: 13
       }
     }
 
